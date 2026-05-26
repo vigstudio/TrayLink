@@ -20,6 +20,14 @@ export function isBrowserApp(path: string): boolean {
   return BROWSER_HINTS.some((hint) => lower.includes(hint));
 }
 
+export function shouldShowAppUrl(path: string, urlEnabled?: boolean): boolean {
+  return Boolean(urlEnabled) || isBrowserApp(path);
+}
+
+export function appSupportsUrl(path: string, urlEnabled?: boolean): boolean {
+  return shouldShowAppUrl(path, urlEnabled);
+}
+
 export function validateAppUrl(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed) {

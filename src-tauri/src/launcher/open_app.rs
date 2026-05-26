@@ -24,11 +24,16 @@ pub fn open_app(
         validate_url(url).map_err(|err| LauncherError::LaunchFailed(err))?;
     }
 
-    launch_path(&entry.path, &entry.args, url)
+    launch_path(&entry.path, &entry.args, url, entry.url_enabled)
 }
 
-fn launch_path(path: &str, args: &[String], url: Option<&str>) -> Result<(), LauncherError> {
-    let with_url = url.is_some() && is_browser(path);
+fn launch_path(
+    path: &str,
+    args: &[String],
+    url: Option<&str>,
+    url_enabled: bool,
+) -> Result<(), LauncherError> {
+    let with_url = url.is_some() && (is_browser(path) || url_enabled);
 
     #[cfg(target_os = "windows")]
     {

@@ -130,6 +130,9 @@ pub struct AppEntry {
     pub args: Vec<String>,
     #[serde(default)]
     pub url: Option<String>,
+    /// Cho phép mở app kèm URL (trình duyệt hoặc app hỗ trợ URL).
+    #[serde(default)]
+    pub url_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

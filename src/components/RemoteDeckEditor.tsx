@@ -9,7 +9,7 @@ import {
   clearDeckIcon,
   getConfig,
   getServerStatus,
-  remoteDeckUrl,
+  remoteDeckHttpsUrl,
   setDeckIconFromFile,
   updateConfig,
   type AppConfig,
@@ -118,8 +118,8 @@ export function RemoteDeckEditor({ active = true }: { active?: boolean }) {
       syncDeckItems(buildDeckItems(data));
     }
     setRemoteUrl(
-      remoteDeckUrl(
-        data.port,
+      remoteDeckHttpsUrl(
+        status.https_port ?? data.port + 1,
         Boolean(data.require_token),
         data.require_token ? data.token : "",
         status.lan_ip,

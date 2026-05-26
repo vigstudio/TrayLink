@@ -1,12 +1,21 @@
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use axum::serve;
+use axum_server::tls_rustls::RustlsConfig;
+use axum_server::Handle;
 use tauri::AppHandle;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 use crate::api::routes::build_router;
+use crate::net;
 use crate::state::{ServerHandle, SharedState};
+use crate::tls;
+
+pub fn https_port(http_port: u16) -> u16 {
+    http_port.saturating_add(1)
+}
 
 pub async fn start_server(app: AppHandle, state: SharedState) -> Result<(), String> {
     stop_server(&state).await;
@@ -26,32 +35,75 @@ pub async fn start_server(app: AppHandle, state: SharedState) -> Result<(), Stri
     *state.server_error.write().unwrap() = None;
     *state.server_started_at.write().unwrap() = Some(std::time::Instant::now());
 
-    let router = build_router(state.clone());
+    let http_router = build_router(state.clone());
+    let https_router = build_router(state.clone());
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+
+    let https_handle = start_https_server(&app, state.clone(), https_router).await;
 
     {
         let mut guard = state.server.lock().await;
         *guard = Some(ServerHandle {
             shutdown_tx: Some(shutdown_tx),
+            https_shutdown: https_handle,
         });
     }
 
     tauri::async_runtime::spawn(async move {
-        if let Err(err) = serve(
-            listener,
-            router.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .with_graceful_shutdown(async {
-            let _ = shutdown_rx.await;
-        })
-        .await
+        if let Err(err) = serve(listener, http_router)
+            .with_graceful_shutdown(async {
+                let _ = shutdown_rx.await;
+            })
+            .await
         {
             eprintln!("API server error: {err}");
         }
     });
 
-    let _ = app;
     Ok(())
+}
+
+async fn start_https_server(
+    app: &AppHandle,
+    state: SharedState,
+    router: axum::Router,
+) -> Option<Handle> {
+    let http_port = state.config.read().unwrap().port;
+    let https_port = https_port(http_port);
+    let lan_ip = net::get_lan_ip();
+    let materials = match tls::create_tls_materials(lan_ip.as_deref()) {
+        Ok(m) => m,
+        Err(err) => {
+            eprintln!("HTTPS cert error: {err}");
+            return None;
+        }
+    };
+
+    let rustls_config = match RustlsConfig::from_pem(materials.cert_pem, materials.key_pem).await {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("HTTPS rustls config error: {err}");
+            return None;
+        }
+    };
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], https_port));
+    let handle = Handle::new();
+    let serve_handle = handle.clone();
+
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) = axum_server::bind_rustls(addr, rustls_config)
+            .handle(serve_handle)
+            .serve(router.into_make_service())
+            .await
+        {
+            eprintln!("HTTPS API server error: {err}");
+        }
+    });
+
+    let _ = app;
+    eprintln!("TrayLink HTTPS listening on 0.0.0.0:{https_port}");
+    Some(handle)
 }
 
 pub async fn restart_server(app: AppHandle, state: SharedState) -> Result<(), String> {
@@ -66,10 +118,13 @@ async fn stop_server(state: &SharedState) {
     };
 
     if let Some(handle) = handle {
+        if let Some(https) = handle.https_shutdown {
+            https.graceful_shutdown(Some(Duration::from_millis(400)));
+        }
         if let Some(tx) = handle.shutdown_tx {
             let _ = tx.send(());
         }
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(Duration::from_millis(150)).await;
     }
 
     *state.server_started_at.write().unwrap() = None;

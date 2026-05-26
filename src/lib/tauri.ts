@@ -5,6 +5,8 @@ export interface AppEntry {
   name?: string;
   args?: string[];
   url?: string;
+  /** Bật mở app kèm URL (cho trình duyệt không tự nhận diện). */
+  url_enabled?: boolean;
 }
 
 export interface ExecEntry {
@@ -47,6 +49,7 @@ export interface StatusResponse {
   online: boolean;
   version: string;
   port: number;
+  https_port: number;
   lan_ip?: string | null;
   error?: string | null;
 }
@@ -57,6 +60,10 @@ export function apiHost(lanIp?: string | null): string {
 
 export function apiBaseUrl(port: number, lanIp?: string | null): string {
   return `http://${apiHost(lanIp)}:${port}`;
+}
+
+export function apiBaseUrlHttps(httpsPort: number, lanIp?: string | null): string {
+  return `https://${apiHost(lanIp)}:${httpsPort}`;
 }
 
 export function runningInTauri(): boolean {
@@ -259,6 +266,18 @@ export function remoteDeckUrl(
   lanIp?: string | null,
 ): string {
   return apiGetUrl(port, "/remote", {}, requireToken, token, lanIp);
+}
+
+export function remoteDeckHttpsUrl(
+  httpsPort: number,
+  requireToken: boolean,
+  token: string,
+  lanIp?: string | null,
+): string {
+  const search = new URLSearchParams();
+  if (requireToken && token) search.set("token", token);
+  const query = search.toString();
+  return `${apiBaseUrlHttps(httpsPort, lanIp)}/remote${query ? `?${query}` : ""}`;
 }
 
 export function formatUptime(seconds: number): string {

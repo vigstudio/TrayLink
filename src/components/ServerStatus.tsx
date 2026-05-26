@@ -12,6 +12,7 @@ import {
   restartServer,
   apiBaseUrl,
   remoteDeckUrl,
+  remoteDeckHttpsUrl,
   type StatusResponse,
 } from "@/lib/tauri";
 import { RemoteDeckQrDialog } from "@/components/RemoteDeckQrDialog";
@@ -24,7 +25,9 @@ export function ServerStatus() {
   const [restarting, setRestarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const [remoteHttpsUrl, setRemoteHttpsUrl] = useState<string | null>(null);
   const [copiedRemote, setCopiedRemote] = useState(false);
+  const [copiedRemoteHttps, setCopiedRemoteHttps] = useState(false);
   const inTauri = isTauri();
 
   const refresh = useCallback(async () => {
@@ -38,13 +41,11 @@ export function ServerStatus() {
         setStatus(data);
         setOnline(data.online);
         setError(data.error ?? null);
-        setRemoteUrl(
-          remoteDeckUrl(
-            config.port,
-            Boolean(config.require_token),
-            config.require_token ? config.token : "",
-            data.lan_ip,
-          ),
+        const requireToken = Boolean(config.require_token);
+        const token = config.require_token ? config.token : "";
+        setRemoteUrl(remoteDeckUrl(config.port, requireToken, token, data.lan_ip));
+        setRemoteHttpsUrl(
+          remoteDeckHttpsUrl(data.https_port ?? config.port + 1, requireToken, token, data.lan_ip),
         );
         const seconds = await getServerUptime();
         setUptime(seconds);
@@ -74,6 +75,13 @@ export function ServerStatus() {
     await navigator.clipboard.writeText(remoteUrl);
     setCopiedRemote(true);
     window.setTimeout(() => setCopiedRemote(false), 2000);
+  };
+
+  const handleCopyRemoteHttps = async () => {
+    if (!remoteHttpsUrl) return;
+    await navigator.clipboard.writeText(remoteHttpsUrl);
+    setCopiedRemoteHttps(true);
+    window.setTimeout(() => setCopiedRemoteHttps(false), 2000);
   };
 
   const handleRestart = async () => {
@@ -144,18 +152,55 @@ export function ServerStatus() {
         </CardContent>
       </Card>
 
-      {remoteUrl && (
-        <Card className="md:col-span-2">
+      {remoteHttpsUrl && (
+        <Card className="md:col-span-2 border-primary/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Smartphone className="size-5" />
-              Remote Deck (điện thoại)
+              Remote Deck — HTTPS (giữ màn hình sáng)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Mở link này trên điện thoại/tablet cùng Wi‑Fi để hiển thị grid icon app
-              (kiểu Stream Deck) và chạm để mở app trên PC.
+              Dùng link <strong>HTTPS</strong> trên điện thoại để Wake Lock API hoạt động
+              (giữ màn hình không tắt). Lần đầu Safari/Chrome sẽ hỏi chấp nhận chứng chỉ — chọn
+              Tiếp tục / Advanced → Proceed.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 text-xs">
+                {remoteHttpsUrl}
+              </code>
+              <Button variant="outline" size="sm" onClick={handleCopyRemoteHttps}>
+                {copiedRemoteHttps ? (
+                  <>
+                    <Check className="size-3.5" />
+                    Đã copy
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3.5" />
+                    Copy HTTPS
+                  </>
+                )}
+              </Button>
+              <RemoteDeckQrDialog url={remoteHttpsUrl} buttonLabel="QR HTTPS" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {remoteUrl && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-muted-foreground">
+              <Smartphone className="size-5" />
+              Remote Deck — HTTP (API thường)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              HTTP không hỗ trợ Wake Lock — màn hình có thể vẫn tự tắt. Ưu tiên link HTTPS ở
+              trên cho điện thoại.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 text-xs">
@@ -170,11 +215,11 @@ export function ServerStatus() {
                 ) : (
                   <>
                     <Copy className="size-3.5" />
-                    Copy link
+                    Copy HTTP
                   </>
                 )}
               </Button>
-              <RemoteDeckQrDialog url={remoteUrl} buttonLabel="Quét QR" />
+              <RemoteDeckQrDialog url={remoteUrl} buttonLabel="QR HTTP" />
             </div>
           </CardContent>
         </Card>

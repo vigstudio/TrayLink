@@ -13,7 +13,7 @@ use tower_http::trace::TraceLayer;
 
 use crate::api::auth::extract_token;
 use crate::api::remote;
-use crate::api::server::restart_server;
+use crate::api::server::{https_port, restart_server};
 use crate::launcher::{exec_cmd, open_app, open_file, LauncherError};
 use crate::net;
 use crate::state::{LogEntry, SharedState, APP_VERSION};
@@ -23,6 +23,7 @@ pub struct StatusResponse {
     online: bool,
     version: &'static str,
     port: u16,
+    https_port: u16,
     lan_ip: Option<String>,
 }
 
@@ -91,6 +92,7 @@ async fn status(State(state): State<SharedState>) -> Json<StatusResponse> {
         online: true,
         version: APP_VERSION,
         port,
+        https_port: https_port(port),
         lan_ip: net::get_lan_ip(),
     })
 }

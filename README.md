@@ -20,13 +20,43 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 
 ## Hướng dẫn sử dụng
 
-### Video sử dụng đồng hồ AI để mở ứng dụng
+### Remote Deck trên điện thoại
 
-![Hướng dẫn sử dụng — đồng hồ AI mở ứng dụng qua TrayLink](docs/cach-su-dung.gif)
+Mở link **HTTPS** trên điện thoại cùng Wi‑Fi → grid icon app (kiểu Stream Deck), chạm để mở app trên PC. Nút **mặt trời** góc phải giữ màn hình sáng — cần HTTPS và [vượt cảnh báo chứng chỉ](#vượt-cảnh-báo-https-chứng-chỉ-tự-ký) lần đầu.
 
-*Cài app → thêm app → copy link API — dùng với Stream Deck / thiết bị trên LAN.*
+![TrayLink Remote trên điện thoại — grid app, toàn màn hình và giữ màn hình sáng](docs/mobile%20screen%20shot.jpg)
 
-**Sản phẩm trong video:** [Loa AI Văn Phòng — loaai.me](https://loaai.me)
+### Vượt cảnh báo HTTPS (chứng chỉ tự ký)
+
+TrayLink chạy HTTPS trên port **8766** (HTTP + 1) với chứng chỉ **tự ký** — trình duyệt điện thoại sẽ cảnh báo lần đầu. Đây là bước **bắt buộc** để vào Remote và bật **giữ màn hình sáng** (Wake Lock chỉ hoạt động qua `https://`, không qua `http://`).
+
+1. Dashboard → **Overview** → copy link **Remote Deck — HTTPS** (vd `https://192.168.1.x:8766/remote`)
+2. Mở link trên điện thoại (cùng Wi‑Fi với PC)
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>Bước 1 — Cảnh báo</strong></p>
+      <p>Safari/Chrome báo kết nối không riêng tư — bình thường, chọn tiếp tục.</p>
+      <img src="docs/allow-https/alert%20https.jpg" alt="Cảnh báo HTTPS — kết nối không riêng tư" width="280" />
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>Bước 2 — Cho phép</strong></p>
+      <p>Chọn <strong>Tiếp tục</strong>, hoặc <strong>Advanced</strong> → <strong>Proceed</strong> / <strong>Visit this website</strong>.</p>
+      <img src="docs/allow-https/allow%20https.jpg" alt="Cho phép truy cập HTTPS — vượt chứng chỉ tự ký" width="280" />
+    </td>
+  </tr>
+</table>
+
+3. Sau khi vào được trang Remote → bật nút **mặt trời** (góc phải) để giữ màn hình sáng
+
+| | HTTP `:8765` | HTTPS `:8766` |
+|---|-------------|---------------|
+| Mở app từ điện thoại | Có | Có |
+| Giữ màn hình sáng | Không | Có |
+| Cần bước ảnh trên | Không | Có (lần đầu) |
+
+📖 Chi tiết & xử lý sự cố: [docs/allow-https/README.md](docs/allow-https/README.md)
 
 ### Các bước nhanh
 
@@ -36,7 +66,7 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 4. **Test** — thử mở app trên máy này.
 5. **API** — mở modal, **Copy** link GET hoặc lệnh curl POST (dùng IP LAN, vd `http://192.168.1.x:8765/open-app?app=chrome`).
 6. Dán link vào **Stream Deck**, shortcut, trình duyệt trên điện thoại/tablet cùng Wi‑Fi, hoặc gọi từ script.
-7. **Remote Deck** — Dashboard → **Overview** → copy link Remote Deck, mở trên điện thoại để điều khiển app dạng grid icon. Sắp xếp thứ tự và ẩn/hiện app trong tab **Remote Deck**.
+7. **Remote Deck** — Dashboard → **Overview** → copy link **HTTPS** Remote Deck, mở trên điện thoại để điều khiển app dạng grid icon (bật nút mặt trời để giữ màn hình sáng). Sắp xếp thứ tự và ẩn/hiện app trong tab **Remote Deck**. Xem [hướng dẫn HTTPS](docs/allow-https/README.md).
 
 ![Modal API — copy link GET / curl POST](docs/screenshot2.png)
 
@@ -56,6 +86,14 @@ curl -X POST http://192.168.1.x:8765/open-app \
 ```
 
 Thay `192.168.1.x` bằng **IP LAN** hiển thị trong Dashboard → **Overview** hoặc modal **API**.
+
+### Video — Loa AI văn phòng - Đồng hồ Ai mở ứng dụng mở qua API
+
+![Hướng dẫn sử dụng — đồng hồ AI mở ứng dụng qua TrayLink](docs/cach-su-dung.gif)
+
+*Đồng hồ gọi API để mở app*
+
+**Sản phẩm trong video:** [Loa AI Văn Phòng — loaai.me](https://loaai.me)
 
 ## Tải bản cài đặt
 
@@ -163,7 +201,15 @@ Response:
 
 ### Remote Deck (giao diện điện thoại)
 
-Mở trên trình duyệt điện thoại/tablet cùng Wi‑Fi:
+Mở trên trình duyệt điện thoại/tablet cùng Wi‑Fi (xem ảnh minh họa ở [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng)).
+
+**HTTPS (khuyến nghị — giữ màn hình sáng):**
+
+```
+https://192.168.1.x:8766/remote
+```
+
+**HTTP (mở app, không giữ màn hình sáng):**
 
 ```
 http://192.168.1.x:8765/remote
@@ -171,7 +217,11 @@ http://192.168.1.x:8765/remote
 
 Hoặc `http://192.168.1.x:8765/` — hiển thị grid icon các app và lệnh đã cấu hình. Chạm icon để mở app hoặc chạy lệnh trên PC.
 
-Trên trang Remote: nút **toàn màn hình** (góc phải) và nút **giữ màn hình sáng** (Wake Lock — tránh tắt màn hình khi treo điện thoại).
+Trên trang Remote: nút **toàn màn hình** (góc phải) và nút **giữ màn hình sáng** (Wake Lock — chỉ hoạt động qua **HTTPS** vì trình duyệt yêu cầu secure context).
+
+Copy link **HTTPS** và quét QR trong Dashboard → **Overview** → **Remote Deck — HTTPS**.
+
+**Vượt cảnh báo chứng chỉ lần đầu** (xem ảnh từng bước): [Vượt cảnh báo HTTPS](#vượt-cảnh-báo-https-chứng-chỉ-tự-ký) · [Hướng dẫn đầy đủ](docs/allow-https/README.md)
 
 Nếu bật token: thêm `?token=<token>` vào URL, hoặc nhập token khi trang yêu cầu.
 

@@ -408,11 +408,31 @@
     const btnFullscreen = document.getElementById("btn-fullscreen");
     const btnKeepAwake = document.getElementById("btn-keep-awake");
 
-    let wakeLock = null;
+    let screenWakeLock = null;
     let keepAwakeEnabled = localStorage.getItem("traylink_keep_awake") === "1";
-    let noSleepFallbackActive = false;
-    let noSleepAudio = null;
+    let noSleepVideo = null;
+    let keepAwakeMonitor = null;
+    let serverStatus = null;
     let immersiveMode = false;
+
+    const wakeLockApiAvailable =
+      window.isSecureContext && "wakeLock" in navigator && "request" in navigator.wakeLock;
+
+    function isIOS() {
+      return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    }
+
+    function isMobile() {
+      return isIOS() || /Android/i.test(navigator.userAgent);
+    }
+
+    function httpsRemoteUrl() {
+      if (!serverStatus?.https_port) return null;
+      const host = location.hostname || "127.0.0.1";
+      const qs = location.search || "";
+      return `https://${host}:${serverStatus.https_port}/remote${qs}`;
+    }
 
     function showToast(msg, type = "success") {
       toastEl.textContent = msg;
@@ -498,77 +518,139 @@
       enterImmersiveMode();
     }
 
-    async function enableNoSleepFallback() {
+    async function requestScreenWakeLock() {
+      if (!wakeLockApiAvailable) {
+        return { ok: false, reason: "insecure", message: "Cần HTTPS" };
+      }
+      if (document.visibilityState !== "visible") {
+        return { ok: false, reason: "hidden", message: "Tab không hiển thị" };
+      }
       try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return false;
-
-        if (!noSleepAudio) {
-          const ctx = new AudioCtx();
-          const buffer = ctx.createBuffer(1, 1, 22050);
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          source.loop = true;
-          source.connect(ctx.destination);
-          source.start(0);
-          noSleepAudio = ctx;
+        if (screenWakeLock && !screenWakeLock.released) {
+          return { ok: true, mode: "wake-lock" };
         }
+        screenWakeLock = await navigator.wakeLock.request("screen");
+        screenWakeLock.addEventListener("release", () => {
+          screenWakeLock = null;
+          updateKeepAwakeButton();
+          if (keepAwakeEnabled && document.visibilityState === "visible") {
+            requestScreenWakeLock().then(updateKeepAwakeButton);
+          }
+        });
+        return { ok: true, mode: "wake-lock" };
+      } catch (err) {
+        screenWakeLock = null;
+        return {
+          ok: false,
+          reason: err?.name || "error",
+          message: err?.message || String(err),
+        };
+      }
+    }
 
-        if (noSleepAudio.state === "suspended") {
-          await noSleepAudio.resume();
+    async function releaseScreenWakeLock() {
+      if (screenWakeLock) {
+        try {
+          await screenWakeLock.release();
+        } catch {}
+        screenWakeLock = null;
+      }
+    }
+
+    async function enableVideoNoSleep() {
+      try {
+        if (!noSleepVideo) {
+          const video = document.createElement("video");
+          video.setAttribute("playsinline", "");
+          video.setAttribute("muted", "");
+          video.setAttribute("loop", "");
+          video.setAttribute("title", "No Sleep");
+          video.style.cssText =
+            "position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;left:0;top:0";
+          video.src = "/api/nosleep.mp4";
+          document.body.appendChild(video);
+          noSleepVideo = video;
         }
-
-        noSleepFallbackActive = true;
+        await noSleepVideo.play();
         return true;
       } catch {
-        noSleepFallbackActive = false;
         return false;
       }
     }
 
-    function disableNoSleepFallback() {
-      if (noSleepAudio) {
-        noSleepAudio.close().catch(() => {});
-        noSleepAudio = null;
+    function disableVideoNoSleep() {
+      if (noSleepVideo) {
+        noSleepVideo.pause();
+        noSleepVideo.remove();
+        noSleepVideo = null;
       }
-      noSleepFallbackActive = false;
     }
 
-    async function acquireWakeLock() {
-      if ("wakeLock" in navigator) {
-        try {
-          if (wakeLock) {
-            await wakeLock.release();
-            wakeLock = null;
-          }
-          wakeLock = await navigator.wakeLock.request("screen");
-          wakeLock.addEventListener("release", () => {
-            wakeLock = null;
-            updateKeepAwakeButton();
-          });
-          disableNoSleepFallback();
+    async function renewKeepAwake() {
+      if (!keepAwakeEnabled || document.visibilityState !== "visible") return false;
+
+      let mode = null;
+      if (wakeLockApiAvailable) {
+        const wl = await requestScreenWakeLock();
+        if (wl.ok) {
+          mode = "wake-lock";
+          disableVideoNoSleep();
           return true;
-        } catch {
-          // fallback below
         }
       }
-      return enableNoSleepFallback();
+
+      const videoOk = await enableVideoNoSleep();
+      if (videoOk) {
+        mode = "video";
+        return true;
+      }
+
+      return false;
     }
 
-    async function releaseWakeLock() {
-      if (wakeLock) {
-        try {
-          await wakeLock.release();
-        } catch {}
-        wakeLock = null;
+    async function releaseKeepAwake() {
+      await releaseScreenWakeLock();
+      disableVideoNoSleep();
+    }
+
+    function isKeepAwakeActive() {
+      return (
+        (screenWakeLock && !screenWakeLock.released) ||
+        (noSleepVideo && !noSleepVideo.paused)
+      );
+    }
+
+    function startKeepAwakeMonitor() {
+      if (keepAwakeMonitor) return;
+      keepAwakeMonitor = setInterval(() => {
+        if (keepAwakeEnabled && document.visibilityState === "visible" && !isKeepAwakeActive()) {
+          renewKeepAwake().then(updateKeepAwakeButton);
+        }
+      }, 5000);
+    }
+
+    function stopKeepAwakeMonitor() {
+      if (keepAwakeMonitor) {
+        clearInterval(keepAwakeMonitor);
+        keepAwakeMonitor = null;
       }
-      disableNoSleepFallback();
     }
 
     function updateKeepAwakeButton() {
-      const active = keepAwakeEnabled && (!!wakeLock || noSleepFallbackActive);
-      btnKeepAwake.classList.toggle("active", active);
-      btnKeepAwake.title = active ? "Màn hình đang được giữ sáng" : "Giữ màn hình sáng";
+      btnKeepAwake.classList.toggle("active", keepAwakeEnabled);
+      if (!keepAwakeEnabled) {
+        btnKeepAwake.title = "Giữ màn hình sáng";
+        return;
+      }
+      if (screenWakeLock && !screenWakeLock.released) {
+        btnKeepAwake.title = "Wake Lock đang bật — màn hình được giữ sáng";
+      } else if (noSleepVideo && !noSleepVideo.paused) {
+        btnKeepAwake.title = "Video fallback — màn hình được giữ sáng";
+      } else if (!wakeLockApiAvailable) {
+        btnKeepAwake.title = "Cần mở bằng HTTPS để Wake Lock hoạt động";
+      } else {
+        btnKeepAwake.title = "Đang cố giữ sáng — chạm màn hình";
+      }
     }
 
     async function setKeepAwake(enabled) {
@@ -576,16 +658,39 @@
       localStorage.setItem("traylink_keep_awake", enabled ? "1" : "0");
 
       if (enabled) {
-        const ok = await acquireWakeLock();
+        if (!wakeLockApiAvailable && location.protocol !== "https:") {
+          const httpsUrl = httpsRemoteUrl();
+          if (httpsUrl) {
+            showToast("Wake Lock cần HTTPS — đang chuyển...", "success");
+            stopKeepAwakeMonitor();
+            window.setTimeout(() => {
+              location.replace(httpsUrl);
+            }, 900);
+            return;
+          }
+        }
+
+        const ok = await renewKeepAwake();
         if (!ok) {
           keepAwakeEnabled = false;
           localStorage.setItem("traylink_keep_awake", "0");
-          showToast("Không thể giữ màn hình sáng trên trình duyệt này", "error");
+          stopKeepAwakeMonitor();
+          const httpsUrl = httpsRemoteUrl();
+          if (httpsUrl) {
+            showToast("Mở link HTTPS trên Dashboard để giữ màn hình sáng", "error");
+          } else {
+            showToast("Không thể giữ màn hình sáng trên trình duyệt này", "error");
+          }
         } else {
-          showToast("Đã bật giữ màn hình sáng", "success");
+          startKeepAwakeMonitor();
+          const via = screenWakeLock ? "Wake Lock API" : "video";
+          let msg = `Đã bật giữ màn hình sáng (${via})`;
+          if (isMobile()) msg += " — tắt Tiết kiệm pin nếu vẫn tắt";
+          showToast(msg, "success");
         }
       } else {
-        await releaseWakeLock();
+        stopKeepAwakeMonitor();
+        await releaseKeepAwake();
         showToast("Đã tắt giữ màn hình sáng", "success");
       }
 
@@ -605,14 +710,30 @@
         toggleKeepAwake();
       });
 
-      document.addEventListener("fullscreenchange", updateFullscreenButton);
-      document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+      const onFullscreenChange = () => {
+        updateFullscreenButton();
+        if (keepAwakeEnabled) renewKeepAwake().then(updateKeepAwakeButton);
+      };
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+      document.addEventListener("webkitfullscreenchange", onFullscreenChange);
 
       document.addEventListener("visibilitychange", () => {
         if (keepAwakeEnabled && document.visibilityState === "visible") {
-          acquireWakeLock().then(updateKeepAwakeButton);
+          renewKeepAwake().then(updateKeepAwakeButton);
         }
       });
+
+      window.addEventListener("pageshow", () => {
+        if (keepAwakeEnabled) renewKeepAwake().then(updateKeepAwakeButton);
+      });
+
+      const renewOnInteraction = () => {
+        if (keepAwakeEnabled) renewKeepAwake().then(updateKeepAwakeButton);
+      };
+      document.addEventListener("pointerdown", renewOnInteraction, { passive: true });
+      document.addEventListener("touchstart", renewOnInteraction, { passive: true });
+
+      if (keepAwakeEnabled) startKeepAwakeMonitor();
 
       updateFullscreenButton();
       updateKeepAwakeButton();
@@ -649,6 +770,13 @@
       </svg>`;
     }
 
+    async function fetchServerStatus() {
+      try {
+        const res = await fetch("/status");
+        if (res.ok) serverStatus = await res.json();
+      } catch {}
+    }
+
     async function fetchDeck() {
       const res = await fetch("/api/deck");
       if (!res.ok) throw new Error("Không tải được danh sách app");
@@ -656,6 +784,8 @@
     }
 
     async function trigger(type, key, url) {
+      if (keepAwakeEnabled) renewKeepAwake();
+
       const tile = document.querySelector(`[data-key="${key}"][data-type="${type}"]`);
       if (tile) tile.classList.add("pressed");
 
@@ -761,6 +891,16 @@
 
     async function init() {
       try {
+        await fetchServerStatus();
+
+        if (keepAwakeEnabled && !wakeLockApiAvailable) {
+          const httpsUrl = httpsRemoteUrl();
+          if (httpsUrl && location.protocol !== "https:") {
+            location.replace(httpsUrl);
+            return;
+          }
+        }
+
         deckData = await fetchDeck();
 
         if (deckData.require_token && !token) {
@@ -780,7 +920,7 @@
 
         render(deckData);
         if (keepAwakeEnabled) {
-          acquireWakeLock().then(updateKeepAwakeButton);
+          renewKeepAwake().then(updateKeepAwakeButton);
         }
       } catch (err) {
         appEl.innerHTML = `

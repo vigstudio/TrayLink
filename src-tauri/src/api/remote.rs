@@ -13,6 +13,7 @@ use crate::remote_icons::{content_type_for_filename, load_custom_icon, slot_id};
 use crate::state::{SharedState, APP_VERSION};
 
 const REMOTE_HTML: &str = include_str!("../../assets/remote.html");
+const NOSLEEP_MP4: &[u8] = include_bytes!("../../assets/nosleep.mp4");
 
 #[derive(Serialize)]
 struct DeckItem {
@@ -40,6 +41,17 @@ pub fn routes() -> axum::Router<SharedState> {
         .route("/api/deck", get(deck_api))
         .route("/api/icons/{kind}/{key}", get(deck_icon))
         .route("/api/icons/{key}", get(legacy_app_icon))
+        .route("/api/nosleep.mp4", get(nosleep_video))
+}
+
+async fn nosleep_video() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "video/mp4"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        NOSLEEP_MP4,
+    )
 }
 
 async fn remote_page() -> Html<&'static str> {

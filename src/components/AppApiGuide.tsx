@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { isBrowserApp } from "@/lib/browser";
+import { appSupportsUrl } from "@/lib/browser";
 import { apiBaseUrl, apiGetUrl, type AppEntry } from "@/lib/tauri";
 
 interface AppApiGuideProps {
@@ -87,7 +87,7 @@ export function AppApiGuide({
   lanIp,
 }: AppApiGuideProps) {
   const sampleUrl = entry.url ?? "https://example.com";
-  const showUrlExample = isBrowserApp(entry.path) || Boolean(entry.url);
+  const showUrlExample = appSupportsUrl(entry.path, entry.url_enabled) || Boolean(entry.url);
   const displayToken = requireToken ? token : "";
 
   const getUrl = apiGetUrl(

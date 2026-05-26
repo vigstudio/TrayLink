@@ -5,6 +5,25 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-05-26
+
+### Added
+
+- Server **HTTPS** trên port `HTTP + 1` (mặc định `8766`) — chứng chỉ tự ký cho IP LAN, bật **Wake Lock** giữ màn hình sáng trên Remote Deck
+- Checkbox **Mở bằng URL** (`url_enabled`) khi thêm/sửa app — hỗ trợ trình duyệt không tự nhận diện (Arc, Zen, …)
+- Fallback video `nosleep.mp4` trên Remote khi không dùng được Wake Lock
+- Dashboard: link **Remote Deck HTTPS** riêng, copy/QR HTTPS
+- Tài liệu [docs/allow-https/](docs/allow-https/) — hướng dẫn vượt cảnh báo chứng chỉ (ảnh từng bước)
+
+### Changed
+
+- Remote Deck: Wake Lock API chuẩn, tự xin lại lock khi bị thu hồi, chuyển HTTP → HTTPS khi bật giữ màn hình sáng
+- README: ưu tiên ảnh mobile, hướng dẫn HTTPS song song (bước 1 & 2), video demo xuống cuối
+
+### Fixed
+
+- Giữ màn hình sáng không hoạt động qua `http://` LAN — cần mở `https://` (secure context)
+
 ## [0.1.7] - 2026-05-26
 
 ### Added
@@ -74,6 +93,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.8]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.8
 [0.1.7]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.7
 [0.1.6]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.6
 [0.1.0]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.0

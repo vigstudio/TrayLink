@@ -54,7 +54,22 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
         save_config(app, &config)?;
     }
 
+    if migrate_url_enabled(&mut config) {
+        save_config(app, &config)?;
+    }
+
     Ok(config)
+}
+
+fn migrate_url_enabled(config: &mut AppConfig) -> bool {
+    let mut changed = false;
+    for entry in config.apps.values_mut() {
+        if entry.url.is_some() && !entry.url_enabled {
+            entry.url_enabled = true;
+            changed = true;
+        }
+    }
+    changed
 }
 
 pub fn save_config(app: &AppHandle, config: &AppConfig) -> Result<(), String> {

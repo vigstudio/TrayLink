@@ -23,6 +23,7 @@ pub struct LogEntry {
 
 pub struct ServerHandle {
     pub shutdown_tx: Option<oneshot::Sender<()>>,
+    pub https_shutdown: Option<axum_server::Handle>,
 }
 
 pub struct AppState {

@@ -25,7 +25,8 @@ import { AppPathPicker } from "@/components/AppPathPicker";
 import { AppApiGuide } from "@/components/AppApiGuide";
 import { AppEditDialog } from "@/components/AppEditDialog";
 import { AppIcon } from "@/components/AppIcon";
-import { isBrowserApp, validateAppUrl } from "@/lib/browser";
+import { isBrowserApp, shouldShowAppUrl, validateAppUrl } from "@/lib/browser";
+import { Switch } from "@/components/ui/switch";
 import type { AppEntry } from "@/lib/tauri";
 
 export function AllowlistEditor() {
@@ -34,6 +35,7 @@ export function AllowlistEditor() {
   const [appName, setAppName] = useState("");
   const [appPath, setAppPath] = useState("");
   const [appUrl, setAppUrl] = useState("");
+  const [appUrlEnabled, setAppUrlEnabled] = useState(false);
   const [cmdKey, setCmdKey] = useState("");
   const [cmdWin, setCmdWin] = useState("");
   const [cmdMac, setCmdMac] = useState("");
@@ -44,7 +46,7 @@ export function AllowlistEditor() {
   const [message, setMessage] = useState("");
   const [editingAppKey, setEditingAppKey] = useState<string | null>(null);
 
-  const showUrlField = isBrowserApp(appPath);
+  const showUrlField = shouldShowAppUrl(appPath, appUrlEnabled);
 
   const load = async () => {
     const [data, status] = await Promise.all([getConfig(), getServerStatus()]);
@@ -88,7 +90,8 @@ export function AllowlistEditor() {
           path: appPath,
           name: appName.trim() || undefined,
           args: [],
-          url: appUrl.trim() || undefined,
+          url_enabled: appUrlEnabled,
+          url: showUrlField ? appUrl.trim() || undefined : undefined,
         },
       },
       remote_deck: syncRemoteDeckOnAppAdd(layout, appKey),
@@ -98,6 +101,7 @@ export function AllowlistEditor() {
     setAppName("");
     setAppPath("");
     setAppUrl("");
+    setAppUrlEnabled(false);
   };
 
   const updateApp = async (key: string, updated: AppEntry) => {
@@ -280,8 +284,8 @@ export function AllowlistEditor() {
               value={appPath}
               onChange={(newPath) => {
                 setAppPath(newPath);
-                if (!isBrowserApp(newPath)) {
-                  setAppUrl("");
+                if (isBrowserApp(newPath)) {
+                  setAppUrlEnabled(true);
                 }
               }}
               onNamePick={(name) => {
@@ -290,6 +294,23 @@ export function AllowlistEditor() {
                 }
               }}
               onDisplayNamePick={setAppName}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="app-url-enabled">Mở bằng URL</Label>
+              <p className="text-xs text-muted-foreground">
+                Bật cho trình duyệt không tự nhận diện (Arc, Zen, trình duyệt tùy chỉnh…)
+              </p>
+            </div>
+            <Switch
+              id="app-url-enabled"
+              checked={appUrlEnabled}
+              onCheckedChange={(checked) => {
+                setAppUrlEnabled(checked);
+                if (!checked) setAppUrl("");
+              }}
             />
           </div>
 
@@ -303,7 +324,7 @@ export function AllowlistEditor() {
                 placeholder="https://example.com"
               />
               <p className="text-xs text-muted-foreground">
-                Trình duyệt sẽ mở URL này khi gọi API. Có thể ghi đè bằng{" "}
+                App sẽ mở URL này khi gọi API. Có thể ghi đè bằng{" "}
                 <code className="rounded bg-muted px-1">{`{"app":"...","url":"..."}`}</code>
               </p>
             </div>

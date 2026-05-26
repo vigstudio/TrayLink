@@ -10,8 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { AppPathPicker } from "@/components/AppPathPicker";
-import { isBrowserApp, validateAppUrl } from "@/lib/browser";
+import { isBrowserApp, shouldShowAppUrl, validateAppUrl } from "@/lib/browser";
 import type { AppEntry } from "@/lib/tauri";
 
 interface AppEditDialogProps {
@@ -34,6 +35,7 @@ export function AppEditDialog({
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
   const [url, setUrl] = useState("");
+  const [urlEnabled, setUrlEnabled] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -41,15 +43,16 @@ export function AppEditDialog({
     setName(entry.name ?? "");
     setPath(entry.path);
     setUrl(entry.url ?? "");
+    setUrlEnabled(entry.url_enabled ?? isBrowserApp(entry.path));
     setError("");
   }, [open, entry]);
 
-  const showUrlField = isBrowserApp(path);
+  const showUrlField = shouldShowAppUrl(path, urlEnabled);
 
   const handlePathChange = (newPath: string) => {
     setPath(newPath);
-    if (!isBrowserApp(newPath)) {
-      setUrl("");
+    if (isBrowserApp(newPath)) {
+      setUrlEnabled(true);
     }
   };
 
@@ -70,6 +73,7 @@ export function AppEditDialog({
       ...entry,
       path: path.trim(),
       name: name.trim() || undefined,
+      url_enabled: urlEnabled,
       url: showUrlField ? url.trim() || undefined : undefined,
     });
     onOpenChange(false);
@@ -110,6 +114,23 @@ export function AppEditDialog({
             />
           </div>
 
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor={`edit-url-enabled-${appKey}`}>Mở bằng URL</Label>
+              <p className="text-xs text-muted-foreground">
+                Bật cho trình duyệt không tự nhận diện (Arc, Zen, trình duyệt tùy chỉnh…)
+              </p>
+            </div>
+            <Switch
+              id={`edit-url-enabled-${appKey}`}
+              checked={urlEnabled}
+              onCheckedChange={(checked) => {
+                setUrlEnabled(checked);
+                if (!checked) setUrl("");
+              }}
+            />
+          </div>
+
           {showUrlField && (
             <div className="space-y-2">
               <Label htmlFor={`edit-url-${appKey}`}>URL mặc định (tùy chọn)</Label>
@@ -120,7 +141,7 @@ export function AppEditDialog({
                 placeholder="https://example.com"
               />
               <p className="text-xs text-muted-foreground">
-                Trình duyệt sẽ mở URL này khi gọi API. Có thể ghi đè bằng{" "}
+                App sẽ mở URL này khi gọi API. Có thể ghi đè bằng{" "}
                 <code className="rounded bg-muted px-1">{`{"app":"...","url":"..."}`}</code>
               </p>
             </div>
