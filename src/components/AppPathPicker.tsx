@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { AppWindow, ChevronDown, FolderOpen, Search } from "lucide-react";
+import { ChevronDown, FolderOpen, Search } from "lucide-react";
+import { AppIcon } from "@/components/AppIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   browseAppPath,
   listInstalledApps,
+  resolveLaunchPath,
   runningInTauri,
   slugifyAppKey,
   type InstalledApp,
@@ -70,12 +72,17 @@ export function AppPathPicker({ id, value, onChange, onNamePick, onDisplayNamePi
     );
   }, [apps, query]);
 
-  const handleSelect = (app: InstalledApp) => {
-    onChange(app.path);
-    onNamePick?.(slugifyAppKey(app.name));
-    onDisplayNamePick?.(app.name);
-    setOpen(false);
-    setQuery("");
+  const handleSelect = async (app: InstalledApp) => {
+    try {
+      const path = await resolveLaunchPath(app.path);
+      onChange(path);
+      onNamePick?.(slugifyAppKey(app.name));
+      onDisplayNamePick?.(app.name);
+      setOpen(false);
+      setQuery("");
+    } catch (err) {
+      setError(String(err));
+    }
   };
 
   const handleBrowse = async () => {
@@ -157,9 +164,7 @@ export function AppPathPicker({ id, value, onChange, onNamePick, onDisplayNamePi
                       onClick={() => handleSelect(app)}
                       className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted">
-                        <AppWindow className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                      <AppIcon path={app.path} name={app.name} size="md" />
                       <div className="min-w-0 flex-1">
                         <span className="block text-sm font-medium">{app.name}</span>
                         <span className="block truncate text-xs text-muted-foreground">

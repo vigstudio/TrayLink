@@ -4,6 +4,23 @@ use uuid::Uuid;
 
 use super::AppConfig;
 
+#[cfg(target_os = "windows")]
+fn migrate_lnk_paths(config: &mut AppConfig) -> bool {
+    let mut changed = false;
+    for entry in config.apps.values_mut() {
+        if !entry.path.to_ascii_lowercase().ends_with(".lnk") {
+            continue;
+        }
+        let resolved = crate::apps::resolve_launch_path(&entry.path);
+        let new_path = resolved.to_string_lossy().to_string();
+        if new_path != entry.path {
+            entry.path = new_path;
+            changed = true;
+        }
+    }
+    changed
+}
+
 const STORE_PATH: &str = "config.json";
 const DEFAULTS: &str = include_str!("../../../config/defaults.json");
 
@@ -55,6 +72,11 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
     }
 
     if migrate_url_enabled(&mut config) {
+        save_config(app, &config)?;
+    }
+
+    #[cfg(target_os = "windows")]
+    if migrate_lnk_paths(&mut config) {
         save_config(app, &config)?;
     }
 

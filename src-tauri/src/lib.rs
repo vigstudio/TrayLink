@@ -168,6 +168,13 @@ fn list_installed_apps_cmd() -> Vec<apps::InstalledApp> {
     apps::list_installed_apps()
 }
 
+#[tauri::command]
+fn resolve_launch_path_cmd(path: String) -> String {
+    apps::resolve_launch_path(&path)
+        .to_string_lossy()
+        .into_owned()
+}
+
 #[derive(serde::Serialize)]
 struct ServerStatusResponse {
     online: bool,
@@ -245,6 +252,7 @@ pub fn run() {
             get_server_uptime,
             get_server_status,
             list_installed_apps_cmd,
+            resolve_launch_path_cmd,
             get_app_icon,
             set_deck_icon_from_file,
             clear_deck_icon,

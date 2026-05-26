@@ -135,6 +135,10 @@ export async function listInstalledApps(): Promise<InstalledApp[]> {
   return invoke<InstalledApp[]>("list_installed_apps_cmd");
 }
 
+export async function resolveLaunchPath(path: string): Promise<string> {
+  return invoke<string>("resolve_launch_path_cmd", { path });
+}
+
 export async function browseAppPath(): Promise<string | null> {
   if (!isTauri()) {
     throw new Error("Chọn app chỉ dùng được trong app TrayLink.");
@@ -169,7 +173,12 @@ export async function browseAppPath(): Promise<string | null> {
     return null;
   }
 
-  return typeof selected === "string" ? selected : selected[0] ?? null;
+  const raw = typeof selected === "string" ? selected : selected[0] ?? null;
+  if (!raw) {
+    return null;
+  }
+
+  return resolveLaunchPath(raw);
 }
 
 export function slugifyAppKey(name: string): string {

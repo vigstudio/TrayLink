@@ -5,6 +5,19 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-05-26
+
+### Fixed
+
+- Windows: **Chọn app** từ Start Menu resolve shortcut `.lnk` → `.exe` — mở app không còn lỗi *not a valid Win32 application* (193)
+- Windows: hiện lại **icon** app trong dropdown Chọn app (lấy từ file `.exe` thay vì `.lnk`)
+- Windows: migration tự sửa app đã lưu trong config còn dùng path `.lnk`
+- Windows: launch đúng cho `.exe`, `.lnk` (fallback `cmd start`) và app mở kèm URL
+
+### Added
+
+- Command `resolve_launch_path` — resolve path khi browse hoặc chọn shortcut trên Windows
+
 ## [0.1.9] - 2026-05-26
 
 ### Fixed
@@ -101,6 +114,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.10]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.10
 [0.1.9]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.9
 [0.1.8]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.8
 [0.1.7]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.7

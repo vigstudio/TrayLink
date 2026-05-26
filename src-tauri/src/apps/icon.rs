@@ -34,6 +34,16 @@ pub fn get_app_icon_data_url(path: &str) -> Option<String> {
 
 fn resolve_app_path(path: &str) -> Option<PathBuf> {
     let candidate = PathBuf::from(path);
+
+    #[cfg(target_os = "windows")]
+    {
+        if crate::apps::windows_lnk::is_lnk(&candidate) {
+            if let Some(target) = crate::apps::windows_lnk::resolve_lnk_target(&candidate) {
+                return Some(target);
+            }
+        }
+    }
+
     if candidate.exists() {
         return Some(candidate);
     }
@@ -107,10 +117,6 @@ fn macos_icon_data_url(app_path: &Path) -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn windows_icon_data_url(path: &Path) -> Option<String> {
-    if path.extension().and_then(|ext| ext.to_str()) == Some("lnk") {
-        return None;
-    }
-
     if !path.is_file() {
         return None;
     }

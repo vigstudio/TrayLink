@@ -37,33 +37,15 @@ fn launch_path(
 
     #[cfg(target_os = "windows")]
     {
-        if with_url {
-            if path.ends_with(".exe") || path.contains('\\') || path.contains('/') {
-                let mut cmd = Command::new(path);
-                cmd.arg(url.unwrap());
-                cmd.args(args);
-                cmd.spawn()
-                    .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
-            } else {
-                Command::new("cmd")
-                    .args(["/C", "start", "", path, url.unwrap()])
-                    .spawn()
-                    .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
-            }
-            return Ok(());
-        }
-
-        if path.ends_with(".exe") || path.contains('\\') || path.contains('/') {
-            let mut cmd = Command::new(path);
-            cmd.args(args);
-            cmd.spawn()
-                .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
-        } else {
-            Command::new("cmd")
-                .args(["/C", "start", "", path])
-                .spawn()
-                .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
-        }
+        let launch_path = crate::apps::resolve_launch_path(path);
+        crate::apps::windows_lnk::launch_windows_path(
+            &launch_path,
+            args,
+            url,
+            with_url,
+        )
+        .map_err(|e| LauncherError::LaunchFailed(e))?;
+        return Ok(());
     }
 
     #[cfg(target_os = "macos")]
