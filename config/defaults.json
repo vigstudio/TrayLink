@@ -1,0 +1,25 @@
+{
+  "port": 8765,
+  "token": "",
+  "autostart": false,
+  "apps": {
+    "obs": {
+      "path": "C:/Program Files/obs-studio/bin/64bit/obs64.exe",
+      "args": []
+    },
+    "calculator": {
+      "path": "Calculator",
+      "args": []
+    }
+  },
+  "commands": {
+    "restart_server": {
+      "internal": true
+    },
+    "shutdown": {
+      "win": "shutdown /s /t 0",
+      "mac": "osascript -e 'tell app \"System Events\" to shut down'",
+      "linux": "systemctl poweroff"
+    }
+  }
+}
