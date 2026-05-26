@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { isBrowserApp } from "@/lib/browser";
-import { apiGetUrl, type AppEntry } from "@/lib/tauri";
+import { apiBaseUrl, apiGetUrl, type AppEntry } from "@/lib/tauri";
 
 interface AppApiGuideProps {
   appKey: string;
@@ -17,6 +19,41 @@ interface AppApiGuideProps {
   token: string;
   requireToken: boolean;
   allowGet: boolean;
+  lanIp?: string | null;
+}
+
+function CopyBlock({ label, text }: { label: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="font-medium">{label}</p>
+        <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={handleCopy}>
+          {copied ? (
+            <>
+              <Check className="size-3.5" />
+              Đã copy
+            </>
+          ) : (
+            <>
+              <Copy className="size-3.5" />
+              Copy
+            </>
+          )}
+        </Button>
+      </div>
+      <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">
+        {text}
+      </pre>
+    </div>
+  );
 }
 
 function buildOpenAppCurl(
@@ -24,6 +61,7 @@ function buildOpenAppCurl(
   port: number,
   token: string,
   requireToken: boolean,
+  lanIp: string | null | undefined,
   url?: string,
 ) {
   const body = url
@@ -34,7 +72,7 @@ function buildOpenAppCurl(
     ? `  -H "Authorization: Bearer ${token}" \\\n`
     : "";
 
-  return `curl -X POST http://127.0.0.1:${port}/open-app \\
+  return `curl -X POST ${apiBaseUrl(port, lanIp)}/open-app \\
 ${authHeader}  -H "Content-Type: application/json" \\
   -d '${body.replace(/'/g, "'\\''")}'`;
 }
@@ -46,8 +84,8 @@ export function AppApiGuide({
   token,
   requireToken,
   allowGet,
+  lanIp,
 }: AppApiGuideProps) {
-  const maskedToken = token ? `${token.slice(0, 8)}...` : "—";
   const sampleUrl = entry.url ?? "https://example.com";
   const showUrlExample = isBrowserApp(entry.path) || Boolean(entry.url);
   const displayToken = requireToken ? token : "";
@@ -58,6 +96,7 @@ export function AppApiGuide({
     { app: appKey, ...(entry.url ? { url: entry.url } : {}) },
     requireToken,
     displayToken,
+    lanIp,
   );
   const getUrlOverride = apiGetUrl(
     port,
@@ -65,11 +104,23 @@ export function AppApiGuide({
     { app: appKey, url: sampleUrl },
     requireToken,
     displayToken,
+    lanIp,
   );
 
-  const headersBlock = requireToken
-    ? `Authorization: Bearer ${maskedToken}\nContent-Type: application/json`
-    : "Content-Type: application/json";
+  const bodyJson = JSON.stringify(
+    { app: appKey, ...(entry.url ? { url: entry.url } : {}) },
+    null,
+    2,
+  );
+  const curlPost = buildOpenAppCurl(appKey, port, token, requireToken, lanIp, entry.url);
+  const curlPostOverride = buildOpenAppCurl(
+    appKey,
+    port,
+    token,
+    requireToken,
+    lanIp,
+    sampleUrl,
+  );
 
   return (
     <Dialog>
@@ -85,70 +136,29 @@ export function AppApiGuide({
         <DialogHeader>
           <DialogTitle>API — {appKey}</DialogTitle>
           <DialogDescription>
-            Gọi HTTP API từ script, Stream Deck, hoặc thiết bị trên mạng LAN.
+            Gọi HTTP API từ thiết bị trong mạng LAN
+            {lanIp ? ` (IP: ${lanIp})` : ""}.
             {!requireToken && " Token đang tắt — không cần header Authorization."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
           {allowGet && (
-            <div>
-              <p className="mb-1 font-medium">GET — link URL (đơn giản nhất)</p>
-              <code className="block break-all rounded-md bg-muted p-2 text-xs">
-                {getUrl}
-              </code>
+            <>
+              <CopyBlock label="GET — link URL (đơn giản nhất)" text={getUrl} />
               {showUrlExample && (
-                <>
-                  <p className="mb-1 mt-3 font-medium">GET — ghi đè URL</p>
-                  <code className="block break-all rounded-md bg-muted p-2 text-xs">
-                    {getUrlOverride}
-                  </code>
-                </>
+                <CopyBlock label="GET — ghi đè URL" text={getUrlOverride} />
               )}
-            </div>
+            </>
           )}
 
-          <div>
-            <p className="mb-1 font-medium">POST — Endpoint</p>
-            <code className="block rounded-md bg-muted p-2 text-xs">
-              POST http://127.0.0.1:{port}/open-app
-            </code>
-          </div>
-
-          <div>
-            <p className="mb-1 font-medium">Headers</p>
-            <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">{headersBlock}</pre>
-          </div>
-
-          <div>
-            <p className="mb-1 font-medium">Body</p>
-            <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
-              {JSON.stringify({ app: appKey, ...(entry.url ? { url: entry.url } : {}) }, null, 2)}
-            </pre>
-          </div>
-
-          <div>
-            <p className="mb-1 font-medium">curl (POST)</p>
-            <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
-              {buildOpenAppCurl(appKey, port, token, requireToken, entry.url)}
-            </pre>
-          </div>
+          <CopyBlock label="POST — curl" text={curlPost} />
 
           {showUrlExample && (
-            <div>
-              <p className="mb-1 font-medium">curl (POST, ghi đè URL)</p>
-              <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
-                {buildOpenAppCurl(appKey, port, token, requireToken, sampleUrl)}
-              </pre>
-            </div>
+            <CopyBlock label="POST — curl (ghi đè URL)" text={curlPostOverride} />
           )}
 
-          <div>
-            <p className="mb-1 font-medium">Response thành công</p>
-            <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
-              {JSON.stringify({ ok: true, message: `opened app '${appKey}'` }, null, 2)}
-            </pre>
-          </div>
+          <CopyBlock label="POST — body (JSON)" text={bodyJson} />
         </div>
       </DialogContent>
     </Dialog>

@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
+  apiBaseUrl,
   apiGetUrl,
   getAutostartEnabled,
   getConfig,
+  getServerStatus,
   regenerateToken,
   restartServer,
   setAutostart,
@@ -29,14 +31,16 @@ export function SettingsPanel() {
   const [allowGet, setAllowGet] = useState(true);
   const [showToken, setShowToken] = useState(false);
   const [autostart, setAutostartState] = useState(false);
+  const [lanIp, setLanIp] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   const load = async () => {
-    const config = await getConfig();
+    const [config, status] = await Promise.all([getConfig(), getServerStatus()]);
     setPort(String(config.port));
     setToken(config.token);
     setRequireToken(config.require_token ?? false);
     setAllowGet(config.allow_get ?? true);
+    setLanIp(status.lan_ip ?? null);
     const enabled = await getAutostartEnabled();
     setAutostartState(enabled);
   };
@@ -98,28 +102,31 @@ export function SettingsPanel() {
   };
 
   const portNum = Number(port) || 8765;
+  const tokenDisplay = showToken ? token : "<token>";
   const openAppGetUrl = apiGetUrl(
     portNum,
     "/open-app",
     { app: "my-app" },
     requireToken,
-    showToken ? token : "<token>",
+    tokenDisplay,
+    lanIp,
   );
   const openFileGetUrl = apiGetUrl(
     portNum,
     "/open-file",
     { path: "/path/to/file.mp4" },
     requireToken,
-    showToken ? token : "<token>",
+    tokenDisplay,
+    lanIp,
   );
   const execGetUrl = apiGetUrl(
     portNum,
     "/exec",
     { cmd: "restart_server" },
     requireToken,
-    showToken ? token : "<token>",
+    tokenDisplay,
+    lanIp,
   );
-
   return (
     <div className="space-y-4">
       <Card>
@@ -209,13 +216,17 @@ export function SettingsPanel() {
           <CardTitle>Ví dụ API</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 font-mono text-xs">
+          <p className="font-sans text-sm text-muted-foreground">
+            Base URL LAN: <strong>{apiBaseUrl(portNum, lanIp)}</strong>
+            {!lanIp && " (chưa phát hiện IP — dùng 127.0.0.1, chỉ máy này gọi được)"}
+          </p>
           <p className="font-sans text-sm text-muted-foreground">GET — status</p>
-          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl http://127.0.0.1:${port}/status`}</pre>
+          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl ${apiBaseUrl(portNum, lanIp)}/status`}</pre>
 
           {allowGet ? (
             <>
               <p className="font-sans text-sm text-muted-foreground">
-                GET — mở link URL trực tiếp (dán vào trình duyệt / Stream Deck)
+                GET — mở link URL trực tiếp (dán vào trình duyệt / Stream Deck trên LAN)
               </p>
               <pre className="overflow-x-auto rounded-md bg-muted p-3">{openAppGetUrl}</pre>
               <pre className="overflow-x-auto rounded-md bg-muted p-3">{openFileGetUrl}</pre>
@@ -228,13 +239,13 @@ export function SettingsPanel() {
           )}
 
           <p className="font-sans text-sm text-muted-foreground">POST — curl</p>
-          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/open-app \\
+          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST ${apiBaseUrl(portNum, lanIp)}/open-app \\
 ${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
   -d '{"app":"my-app"}'`}</pre>
-          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/open-file \\
+          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST ${apiBaseUrl(portNum, lanIp)}/open-file \\
 ${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
   -d '{"path":"/path/to/file.mp4"}'`}</pre>
-          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/exec \\
+          <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST ${apiBaseUrl(portNum, lanIp)}/exec \\
 ${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
   -d '{"cmd":"restart_server"}'`}</pre>
         </CardContent>

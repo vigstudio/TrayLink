@@ -9,6 +9,7 @@ import {
   getServerStatus,
   getServerUptime,
   restartServer,
+  apiBaseUrl,
   type StatusResponse,
 } from "@/lib/tauri";
 
@@ -94,7 +95,11 @@ export function ServerStatus() {
             {inTauri ? formatUptime(uptime) : "— (mở qua TrayLink app)"}
           </p>
           <p>
-            <span className="text-muted-foreground">API endpoint:</span>{" "}
+            <span className="text-muted-foreground">API (LAN):</span>{" "}
+            {apiBaseUrl(port, status?.lan_ip)}
+          </p>
+          <p>
+            <span className="text-muted-foreground">API (máy này):</span>{" "}
             http://127.0.0.1:{port}
           </p>
           <p className="text-muted-foreground">
@@ -113,8 +118,8 @@ export function ServerStatus() {
             {restarting ? "Đang restart..." : "Restart Server"}
           </Button>
           <p className="mt-3 text-sm text-muted-foreground">
-            Server API chỉ lắng nghe trên localhost (127.0.0.1). Client bên ngoài (curl,
-            Stream Deck) gọi port API ({port}), không phải port UI (1420).
+            Server lắng nghe trên mạng LAN (0.0.0.0). Thiết bị khác gọi bằng IP LAN ở trên,
+            port {port} — không phải port UI dev (1420).
           </p>
         </CardContent>
       </Card>

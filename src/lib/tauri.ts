@@ -36,7 +36,16 @@ export interface StatusResponse {
   online: boolean;
   version: string;
   port: number;
+  lan_ip?: string | null;
   error?: string | null;
+}
+
+export function apiHost(lanIp?: string | null): string {
+  return lanIp || "127.0.0.1";
+}
+
+export function apiBaseUrl(port: number, lanIp?: string | null): string {
+  return `http://${apiHost(lanIp)}:${port}`;
 }
 
 export function runningInTauri(): boolean {
@@ -169,6 +178,7 @@ export function apiGetUrl(
   params: Record<string, string | undefined>,
   requireToken: boolean,
   token: string,
+  lanIp?: string | null,
 ): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -180,7 +190,7 @@ export function apiGetUrl(
     search.set("token", token);
   }
   const query = search.toString();
-  return `http://127.0.0.1:${port}${path}${query ? `?${query}` : ""}`;
+  return `${apiBaseUrl(port, lanIp)}${path}${query ? `?${query}` : ""}`;
 }
 
 export function formatUptime(seconds: number): string {

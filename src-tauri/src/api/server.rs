@@ -12,11 +12,11 @@ pub async fn start_server(app: AppHandle, state: SharedState) -> Result<(), Stri
     stop_server(&state).await;
 
     let port = state.config.read().unwrap().port;
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = match TcpListener::bind(addr).await {
         Ok(listener) => listener,
         Err(err) => {
-            let message = format!("failed to bind 127.0.0.1:{port}: {err}");
+            let message = format!("failed to bind 0.0.0.0:{port}: {err}");
             *state.server_error.write().unwrap() = Some(message.clone());
             *state.server_started_at.write().unwrap() = None;
             return Err(message);

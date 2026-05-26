@@ -2,6 +2,7 @@ mod api;
 mod apps;
 mod config;
 mod launcher;
+mod net;
 mod state;
 mod tray;
 
@@ -115,6 +116,7 @@ struct ServerStatusResponse {
     online: bool,
     version: String,
     port: u16,
+    lan_ip: Option<String>,
     error: Option<String>,
 }
 
@@ -125,6 +127,7 @@ fn get_server_status(state: tauri::State<'_, Arc<AppState>>) -> ServerStatusResp
         online: state.is_server_running(),
         version: state::APP_VERSION.to_string(),
         port,
+        lan_ip: net::get_lan_ip(),
         error: state.server_error.read().unwrap().clone(),
     }
 }

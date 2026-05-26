@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getConfig, testOpenApp, updateConfig, type AppConfig } from "@/lib/tauri";
+import { getConfig, getServerStatus, testOpenApp, updateConfig, type AppConfig } from "@/lib/tauri";
 import { AppPathPicker } from "@/components/AppPathPicker";
 import { AppApiGuide } from "@/components/AppApiGuide";
 import { AppIcon } from "@/components/AppIcon";
@@ -28,13 +28,15 @@ export function AllowlistEditor() {
   const [cmdLinux, setCmdLinux] = useState("");
   const [saving, setSaving] = useState(false);
   const [testingApp, setTestingApp] = useState<string | null>(null);
+  const [lanIp, setLanIp] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   const showUrlField = isBrowserApp(appPath);
 
   const load = async () => {
-    const data = await getConfig();
+    const [data, status] = await Promise.all([getConfig(), getServerStatus()]);
     setConfig(data);
+    setLanIp(status.lan_ip ?? null);
   };
 
   useEffect(() => {
@@ -194,6 +196,7 @@ export function AllowlistEditor() {
                           token={config.token}
                           requireToken={config.require_token ?? false}
                           allowGet={config.allow_get ?? true}
+                          lanIp={lanIp}
                         />
                         <Button variant="destructive" size="sm" onClick={() => removeApp(key)}>
                           Xóa
