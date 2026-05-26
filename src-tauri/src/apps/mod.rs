@@ -10,3 +10,6 @@ pub use icon::{get_app_icon_data_url, get_app_icon_png};
 pub fn resolve_launch_path(path: &str) -> PathBuf {
     windows_lnk::resolve_launch_path(path)
 }
+
+#[cfg(target_os = "windows")]
+pub use windows_lnk::{is_lnk, launch_windows_path, resolve_lnk_target};

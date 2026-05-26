@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+
+#[cfg(target_os = "macos")]
 use std::path::Path;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::process::Command;
 
 use crate::config::AppEntry;
@@ -38,7 +41,7 @@ fn launch_path(
     #[cfg(target_os = "windows")]
     {
         let launch_path = crate::apps::resolve_launch_path(path);
-        crate::apps::windows_lnk::launch_windows_path(
+        crate::apps::launch_windows_path(
             &launch_path,
             args,
             url,
@@ -81,6 +84,7 @@ fn launch_path(
             cmd.spawn()
                 .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
         }
+        return Ok(());
     }
 
     #[cfg(target_os = "linux")]
@@ -112,7 +116,6 @@ fn launch_path(
             cmd.spawn()
                 .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
         }
+        return Ok(());
     }
-
-    Ok(())
 }
