@@ -10,20 +10,44 @@ function App() {
     <div className="min-h-screen bg-background">
       <DevBanner />
       <header className="border-b px-6 py-4">
-        <h1 className="text-2xl font-semibold tracking-tight">TrayLink</h1>
-        <p className="text-sm text-muted-foreground">
-          App launcher chạy nền — HTTP API trên localhost
+        <div className="flex items-center gap-3">
+          <img
+            src="/icon.png"
+            alt="TrayLink"
+            className="h-10 w-10 rounded-lg object-cover"
+          />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">TrayLink</h1>
+            <p className="text-sm text-muted-foreground">
+              App launcher chạy nền — HTTP API trên localhost
+            </p>
+          </div>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tác giả:{" "}
+          <a
+            href="https://github.com/PhamMinhKha/TrayLink"
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground underline underline-offset-4 hover:text-primary"
+          >
+            github.com/PhamMinhKha/TrayLink
+          </a>
         </p>
       </header>
 
       <main className="p-6">
-        <Tabs defaultValue="overview" className="space-y-4">
+        <Tabs defaultValue="allowlist" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="allowlist">Apps & Commands</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="logs">Request Log</TabsTrigger>
-            <TabsTrigger value="allowlist">Apps & Commands</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="allowlist">
+            <AllowlistEditor />
+          </TabsContent>
 
           <TabsContent value="overview">
             <ServerStatus />
@@ -31,10 +55,6 @@ function App() {
 
           <TabsContent value="logs">
             <RequestLog />
-          </TabsContent>
-
-          <TabsContent value="allowlist">
-            <AllowlistEditor />
           </TabsContent>
 
           <TabsContent value="settings">

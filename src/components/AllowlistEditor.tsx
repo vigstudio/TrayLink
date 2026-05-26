@@ -11,8 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getConfig, updateConfig, type AppConfig } from "@/lib/tauri";
+import { getConfig, testOpenApp, updateConfig, type AppConfig } from "@/lib/tauri";
 import { AppPathPicker } from "@/components/AppPathPicker";
+import { AppApiGuide } from "@/components/AppApiGuide";
+import { AppIcon } from "@/components/AppIcon";
 import { isBrowserApp, validateAppUrl } from "@/lib/browser";
 
 export function AllowlistEditor() {
@@ -25,6 +27,7 @@ export function AllowlistEditor() {
   const [cmdMac, setCmdMac] = useState("");
   const [cmdLinux, setCmdLinux] = useState("");
   const [saving, setSaving] = useState(false);
+  const [testingApp, setTestingApp] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   const showUrlField = isBrowserApp(appPath);
@@ -91,6 +94,19 @@ export function AllowlistEditor() {
     await save({ ...config, apps });
   };
 
+  const handleTestApp = async (key: string) => {
+    setTestingApp(key);
+    setMessage("");
+    try {
+      const result = await testOpenApp(key);
+      setMessage(result);
+    } catch (err) {
+      setMessage(String(err));
+    } finally {
+      setTestingApp(null);
+    }
+  };
+
   const addCommand = async () => {
     if (!config || !cmdKey) return;
     const next = {
@@ -122,6 +138,8 @@ export function AllowlistEditor() {
     return <p className="text-sm text-muted-foreground">Đang tải...</p>;
   }
 
+  const appEntries = Object.entries(config.apps);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -132,27 +150,58 @@ export function AllowlistEditor() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12"></TableHead>
                 <TableHead>Key</TableHead>
                 <TableHead>Path</TableHead>
                 <TableHead>URL</TableHead>
-                <TableHead></TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(config.apps).map(([key, entry]) => (
-                <TableRow key={key}>
-                  <TableCell>{key}</TableCell>
-                  <TableCell className="font-mono text-xs">{entry.path}</TableCell>
-                  <TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
-                    {entry.url ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="destructive" size="sm" onClick={() => removeApp(key)}>
-                      Xóa
-                    </Button>
+              {appEntries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    Chưa có app nào — thêm app bên dưới
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                appEntries.map(([key, entry]) => (
+                  <TableRow key={key}>
+                    <TableCell>
+                      <AppIcon path={entry.path} name={key} />
+                    </TableCell>
+                    <TableCell className="font-medium">{key}</TableCell>
+                    <TableCell className="max-w-[240px] truncate font-mono text-xs">
+                      {entry.path}
+                    </TableCell>
+                    <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">
+                      {entry.url ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 text-white hover:bg-blue-700"
+                          disabled={testingApp === key}
+                          onClick={() => handleTestApp(key)}
+                        >
+                          {testingApp === key ? "..." : "Test"}
+                        </Button>
+                        <AppApiGuide
+                          appKey={key}
+                          entry={entry}
+                          port={config.port}
+                          token={config.token}
+                          requireToken={config.require_token ?? false}
+                        />
+                        <Button variant="destructive" size="sm" onClick={() => removeApp(key)}>
+                          Xóa
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 

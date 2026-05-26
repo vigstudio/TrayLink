@@ -59,6 +59,18 @@ fn regenerate_token(app: tauri::AppHandle, state: tauri::State<'_, Arc<AppState>
 
 #[tauri::command]
 fn set_autostart(app: tauri::AppHandle, state: tauri::State<'_, Arc<AppState>>, enabled: bool) -> Result<(), String> {
+    sync_autostart(&app, enabled)?;
+
+    {
+        let mut cfg = state.config.write().unwrap();
+        cfg.autostart = enabled;
+        save_config(&app, &cfg)?;
+    }
+
+    Ok(())
+}
+
+fn sync_autostart(app: &tauri::AppHandle, enabled: bool) -> Result<(), String> {
     use tauri_plugin_autostart::ManagerExt;
 
     let autostart = app.autolaunch();
@@ -67,13 +79,6 @@ fn set_autostart(app: tauri::AppHandle, state: tauri::State<'_, Arc<AppState>>, 
     } else {
         autostart.disable().map_err(|e| e.to_string())?;
     }
-
-    {
-        let mut cfg = state.config.write().unwrap();
-        cfg.autostart = enabled;
-        save_config(&app, &cfg)?;
-    }
-
     Ok(())
 }
 
@@ -86,6 +91,18 @@ fn get_autostart_enabled(app: tauri::AppHandle) -> Result<bool, String> {
 #[tauri::command]
 fn get_server_uptime(state: tauri::State<'_, Arc<AppState>>) -> i64 {
     state.uptime_seconds()
+}
+
+#[tauri::command]
+fn test_open_app(state: tauri::State<'_, Arc<AppState>>, app_key: String) -> Result<String, String> {
+    let apps = state.config.read().unwrap().apps.clone();
+    launcher::open_app::open_app(&app_key, &apps, None).map_err(|err| err.to_string())?;
+    Ok(format!("Đã mở app '{app_key}'"))
+}
+
+#[tauri::command]
+fn get_app_icon(path: String) -> Option<String> {
+    apps::get_app_icon_data_url(&path)
 }
 
 #[tauri::command]
@@ -122,30 +139,25 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            tray::show_main_window(app);
         }))
         .setup(|app| {
             let config = load_config(app.handle())?;
-            let state = Arc::new(AppState::new(config, app.handle().clone()));
+            let state = Arc::new(AppState::new(config.clone(), app.handle().clone()));
 
-            if state.config.read().unwrap().autostart {
-                use tauri_plugin_autostart::ManagerExt;
-                let _ = app.autolaunch().enable();
-            }
+            let _ = sync_autostart(app.handle(), config.autostart);
 
             app.manage(state.clone());
 
             tray::setup_tray(app.handle())?;
+            tray::hide_from_dock(app.handle());
 
             if let Some(window) = app.get_webview_window("main") {
-                let window_clone = window.clone();
+                let app_handle = app.handle().clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                         api.prevent_close();
-                        let _ = window_clone.hide();
+                        tray::hide_main_window(&app_handle);
                     }
                 });
             }
@@ -171,7 +183,20 @@ pub fn run() {
             get_server_uptime,
             get_server_status,
             list_installed_apps_cmd,
+            get_app_icon,
+            test_open_app,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { api, code, .. } if code.is_none() => {
+                api.prevent_exit();
+                tray::hide_main_window(&app_handle);
+            }
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen { .. } => {
+                tray::show_main_window(&app_handle);
+            }
+            _ => {}
+        });
 }

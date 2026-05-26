@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 pub struct AppConfig {
     pub port: u16,
     pub token: String,
+    #[serde(default)]
+    pub require_token: bool,
     pub autostart: bool,
     pub apps: HashMap<String, AppEntry>,
     pub commands: HashMap<String, ExecEntry>,

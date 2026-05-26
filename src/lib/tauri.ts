@@ -16,6 +16,7 @@ export interface ExecEntry {
 export interface AppConfig {
   port: number;
   token: string;
+  require_token?: boolean;
   autostart: boolean;
   apps: Record<string, AppEntry>;
   commands: Record<string, ExecEntry>;
@@ -151,6 +152,14 @@ export function slugifyAppKey(name: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+export async function getAppIcon(path: string): Promise<string | null> {
+  return invoke<string | null>("get_app_icon", { path });
+}
+
+export async function testOpenApp(appKey: string): Promise<string> {
+  return invoke<string>("test_open_app", { appKey });
 }
 
 export function formatUptime(seconds: number): string {

@@ -4,7 +4,14 @@ use axum::response::{IntoResponse, Response};
 use crate::state::SharedState;
 
 pub fn extract_token(headers: &HeaderMap, state: &SharedState) -> Result<(), Response> {
-    let expected = state.config.read().unwrap().token.clone();
+    let config = state.config.read().unwrap();
+
+    if !config.require_token {
+        return Ok(());
+    }
+
+    let expected = config.token.clone();
+    drop(config);
 
     if let Some(auth) = headers.get("authorization") {
         if let Ok(value) = auth.to_str() {

@@ -14,9 +14,17 @@ import {
   updateConfig,
 } from "@/lib/tauri";
 
+function authHeader(requireToken: boolean, token: string, showToken: boolean) {
+  if (!requireToken) {
+    return "";
+  }
+  return `  -H "Authorization: Bearer ${showToken ? token : "<token>"}" \\\n`;
+}
+
 export function SettingsPanel() {
   const [port, setPort] = useState("8765");
   const [token, setToken] = useState("");
+  const [requireToken, setRequireToken] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [autostart, setAutostartState] = useState(false);
   const [message, setMessage] = useState("");
@@ -25,6 +33,7 @@ export function SettingsPanel() {
     const config = await getConfig();
     setPort(String(config.port));
     setToken(config.token);
+    setRequireToken(config.require_token ?? false);
     const enabled = await getAutostartEnabled();
     setAutostartState(enabled);
   };
@@ -43,6 +52,18 @@ export function SettingsPanel() {
     await updateConfig({ ...config, port: nextPort });
     await restartServer();
     setMessage("Đã cập nhật port và restart server");
+  };
+
+  const handleRequireToken = async (enabled: boolean) => {
+    const config = await getConfig();
+    let nextToken = config.token;
+    if (enabled && !nextToken) {
+      nextToken = await regenerateToken();
+      setToken(nextToken);
+    }
+    await updateConfig({ ...config, require_token: enabled, token: nextToken });
+    setRequireToken(enabled);
+    setMessage(enabled ? "Đã bật xác thực token" : "Đã tắt token — API mở cho LAN");
   };
 
   const handleRegenerateToken = async () => {
@@ -79,24 +100,41 @@ export function SettingsPanel() {
 
           <Separator />
 
-          <div className="space-y-2">
-            <Label>API Token</Label>
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                value={showToken ? token : "•".repeat(Math.min(token.length, 24))}
-              />
-              <Button variant="outline" onClick={() => setShowToken((v) => !v)}>
-                {showToken ? "Ẩn" : "Hiện"}
-              </Button>
-              <Button variant="outline" onClick={copyToken}>
-                Copy
-              </Button>
-              <Button variant="destructive" onClick={handleRegenerateToken}>
-                Regenerate
-              </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="require-token">Yêu cầu token API</Label>
+              <p className="text-sm text-muted-foreground">
+                Tắt (mặc định) để dùng trên mạng LAN không cần Authorization header
+              </p>
             </div>
+            <Switch
+              id="require-token"
+              checked={requireToken}
+              onCheckedChange={handleRequireToken}
+            />
           </div>
+
+          {requireToken && (
+            <div className="space-y-2">
+              <Label>API Token</Label>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  readOnly
+                  className="min-w-[200px] flex-1"
+                  value={showToken ? token : "•".repeat(Math.min(token.length, 24))}
+                />
+                <Button variant="outline" onClick={() => setShowToken((v) => !v)}>
+                  {showToken ? "Ẩn" : "Hiện"}
+                </Button>
+                <Button variant="outline" onClick={copyToken}>
+                  Copy
+                </Button>
+                <Button variant="destructive" onClick={handleRegenerateToken}>
+                  Regenerate
+                </Button>
+              </div>
+            </div>
+          )}
 
           <Separator />
 
@@ -119,16 +157,13 @@ export function SettingsPanel() {
         <CardContent className="space-y-3 font-mono text-xs">
           <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl http://127.0.0.1:${port}/status`}</pre>
           <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/open-app \\
-  -H "Authorization: Bearer ${showToken ? token : "<token>"}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"app":"obs"}'`}</pre>
+${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
+  -d '{"app":"my-app"}'`}</pre>
           <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/open-file \\
-  -H "Authorization: Bearer ${showToken ? token : "<token>"}" \\
-  -H "Content-Type: application/json" \\
+${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
   -d '{"path":"/path/to/file.mp4"}'`}</pre>
           <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/exec \\
-  -H "Authorization: Bearer ${showToken ? token : "<token>"}" \\
-  -H "Content-Type: application/json" \\
+${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
   -d '{"cmd":"restart_server"}'`}</pre>
         </CardContent>
       </Card>

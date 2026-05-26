@@ -6,6 +6,31 @@ use tauri::{
 
 use crate::api::server::restart_server;
 
+#[cfg(target_os = "macos")]
+pub fn hide_from_dock(app: &AppHandle) {
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    let _ = app.set_dock_visibility(false);
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn hide_from_dock(_app: &AppHandle) {}
+
+pub fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+    hide_from_dock(app);
+}
+
+pub fn hide_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    hide_from_dock(app);
+}
+
 pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let open_item = MenuItem::with_id(app, "open", "Open Dashboard", true, None::<&str>)?;
     let restart_item = MenuItem::with_id(app, "restart", "Restart Server", true, None::<&str>)?;
@@ -22,12 +47,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .menu(&menu)
         .tooltip("TrayLink")
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "open" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
+            "open" => show_main_window(app),
             "restart" => {
                 if let Some(state) = app.try_state::<std::sync::Arc<crate::state::AppState>>() {
                     let app_handle = app.clone();

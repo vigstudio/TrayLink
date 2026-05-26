@@ -4133,6 +4133,7 @@ name = "traylink"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
  "chrono",
  "serde",
  "serde_json",

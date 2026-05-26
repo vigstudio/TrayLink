@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AppIcon } from "@/components/AppIcon";
 import {
   browseAppPath,
   listInstalledApps,
@@ -151,10 +152,15 @@ export function AppPathPicker({ id, value, onChange, onNamePick }: AppPathPicker
                       key={`${app.name}-${app.path}`}
                       type="button"
                       onClick={() => handleSelect(app)}
-                      className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-accent"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent"
                     >
-                      <span className="text-sm font-medium">{app.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">{app.path}</span>
+                      <AppIcon path={app.path} name={app.name} />
+                      <div className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium">{app.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {app.path}
+                        </span>
+                      </div>
                     </button>
                   ))}
                 </div>

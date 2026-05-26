@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:macos": "bash scripts/build-macos.sh",
+    "build:macos:universal": "bash scripts/build-macos.sh universal",
+    "build:windows": "powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
+    "build:all": "bash scripts/build-all.sh",
+    "icon": "tauri icon public/icon.png"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.8",

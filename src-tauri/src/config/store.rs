@@ -7,6 +7,27 @@ use super::AppConfig;
 const STORE_PATH: &str = "config.json";
 const DEFAULTS: &str = include_str!("../../../config/defaults.json");
 
+fn strip_legacy_seed_apps(config: &mut AppConfig) -> bool {
+    let legacy = [
+        ("obs", "C:/Program Files/obs-studio/bin/64bit/obs64.exe"),
+        ("calculator", "Calculator"),
+    ];
+    let mut changed = false;
+
+    for (key, path) in legacy {
+        if config
+            .apps
+            .get(key)
+            .is_some_and(|entry| entry.path == path && entry.url.is_none())
+        {
+            config.apps.remove(key);
+            changed = true;
+        }
+    }
+
+    changed
+}
+
 pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
     let store = app.store(STORE_PATH).map_err(|e| e.to_string())?;
 
@@ -26,6 +47,10 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
 
     if config.token.is_empty() {
         config.token = Uuid::new_v4().to_string();
+        save_config(app, &config)?;
+    }
+
+    if strip_legacy_seed_apps(&mut config) {
         save_config(app, &config)?;
     }
 
