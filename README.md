@@ -21,13 +21,13 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 
 ### Video sử dụng đồng hồ AI để mở ứng dụng
 
-<video src="docs/cach-su-dung.mov" controls width="720">
-  <a href="docs/cach-su-dung.mov">Tải video hướng dẫn (docs/cach-su-dung.mov)</a>
+<video src="docs/cach-su-dung.mp4" controls width="720">
+  <a href="docs/cach-su-dung.mp4">Tải video hướng dẫn (docs/cach-su-dung.mov)</a>
 </video>
 
 *Cài app → thêm app → copy link API — dùng với Stream Deck / thiết bị trên LAN.*
 
-**Sản phẩm trong video:** [Đồng hồ AI — loaai.me](https://loaai.me)
+**Sản phẩm trong video:** [Loa AI Văn Phòng — loaai.me](https://loaai.me)
 
 ### Các bước nhanh
 
