@@ -80,3 +80,42 @@ jobs:
           name: traylink-windows
           path: release/windows/
           if-no-files-found: error
+
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: traylink-macos
+          path: dist/macos
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: traylink-windows
+          path: dist/windows
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          if [ -d dist/macos/TrayLink.app ]; then
+            (cd dist/macos && zip -r ../../release-assets/TrayLink-macos-universal.zip TrayLink.app)
+          fi
+          shopt -s nullglob
+          for dmg in dist/macos/*.dmg; do
+            cp "$dmg" release-assets/
+          done
+          find dist/windows -type f -iname "*setup.exe" -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-assets/*

@@ -31,9 +31,43 @@ App khởi động ẩn — click icon tray → **Open Dashboard** để mở gi
 
 ## Build production
 
+### Build local
+
 ```bash
-npm run tauri build
+npm run build:macos              # macOS (kiến trúc máy hiện tại)
+npm run build:macos:universal    # macOS Intel + Apple Silicon
+npm run build:windows            # Windows (chạy trên máy Windows)
 ```
+
+Chi tiết: [`scripts/BUILD.md`](scripts/BUILD.md)
+
+### Release qua GitHub Actions
+
+#### Tải nhanh (mọi lần build)
+
+Sau khi build xong, vào **Actions → Build Release → run mới nhất → Artifacts**:
+- `traylink-macos`
+- `traylink-windows`
+
+#### Xuất hiện trên trang Releases
+
+**Chỉ khi push tag `v*`** — workflow sẽ tạo [GitHub Release](https://github.com/PhamMinhKha/TrayLink/releases) và đính kèm file cài đặt:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+File trên Releases (ví dụ `v0.1.0`):
+- `TrayLink-macos-universal.zip` — `.app` cho macOS
+- `TrayLink_0.1.0_x64-setup.exe` — installer Windows (nếu build NSIS thành công)
+- `.dmg` — nếu bundling DMG thành công trên CI
+
+Đổi version: tăng tag (`v0.1.1`, `v0.2.0`, ...). Tag đã tồn tại thì xóa rồi push lại, hoặc dùng tag mới.
+
+Hoặc vào **Actions → Build Release → Run workflow** để build thủ công (chỉ có Artifacts, **không** tạo Releases page).
+
+Mỗi lần push lên `main` cũng tự chạy build (Artifacts only, không tạo Release).
 
 ## HTTP API
 
