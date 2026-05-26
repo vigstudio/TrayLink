@@ -16,6 +16,7 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 - Autostart khi boot
 - Allowlist apps + command whitelist
 - Dashboard: trạng thái server, request log, quản lý app, settings, copy link API
+- **Remote Deck**: mở link trên điện thoại/tablet cùng Wi‑Fi → grid icon app kiểu Stream Deck, chạm để mở app trên PC
 
 ## Hướng dẫn sử dụng
 
@@ -35,6 +36,7 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 4. **Test** — thử mở app trên máy này.
 5. **API** — mở modal, **Copy** link GET hoặc lệnh curl POST (dùng IP LAN, vd `http://192.168.1.x:8765/open-app?app=chrome`).
 6. Dán link vào **Stream Deck**, shortcut, trình duyệt trên điện thoại/tablet cùng Wi‑Fi, hoặc gọi từ script.
+7. **Remote Deck** — Dashboard → **Overview** → copy link Remote Deck, mở trên điện thoại để điều khiển app dạng grid icon. Sắp xếp thứ tự và ẩn/hiện app trong tab **Remote Deck**.
 
 ![Modal API — copy link GET / curl POST](docs/screenshot2.png)
 
@@ -158,6 +160,26 @@ Response:
 ```json
 { "online": true, "version": "0.1.0", "port": 8765, "lan_ip": "192.168.1.x" }
 ```
+
+### Remote Deck (giao diện điện thoại)
+
+Mở trên trình duyệt điện thoại/tablet cùng Wi‑Fi:
+
+```
+http://192.168.1.x:8765/remote
+```
+
+Hoặc `http://192.168.1.x:8765/` — hiển thị grid icon các app và lệnh đã cấu hình. Chạm icon để mở app hoặc chạy lệnh trên PC.
+
+Trên trang Remote: nút **toàn màn hình** (góc phải) và nút **giữ màn hình sáng** (Wake Lock — tránh tắt màn hình khi treo điện thoại).
+
+Nếu bật token: thêm `?token=<token>` vào URL, hoặc nhập token khi trang yêu cầu.
+
+Trong Dashboard → tab **Remote Deck**: kéo thả trên khung preview để sắp xếp, click icon để đổi hình tùy chỉnh.
+
+API hỗ trợ:
+- `GET /api/deck` — danh sách app/lệnh (JSON)
+- `GET /api/icons/{key}` — icon app (PNG)
 
 ### GET /open-app, /open-file, /exec (khi bật trong Settings)
 

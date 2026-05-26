@@ -14,5 +14,13 @@
       "mac": "osascript -e 'tell app \"System Events\" to shut down'",
       "linux": "systemctl poweroff"
     }
+  },
+  "remote_deck": {
+    "display_order": [],
+    "app_order": [],
+    "command_order": [],
+    "hidden_apps": [],
+    "hidden_commands": [],
+    "custom_icons": {}
   }
 }

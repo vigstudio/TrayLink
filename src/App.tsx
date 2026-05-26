@@ -3,6 +3,7 @@ import { DevBanner } from "@/components/DevBanner";
 import { ServerStatus } from "@/components/ServerStatus";
 import { RequestLog } from "@/components/RequestLog";
 import { AllowlistEditor } from "@/components/AllowlistEditor";
+import { RemoteDeckEditor } from "@/components/RemoteDeckEditor";
 import { SettingsPanel } from "@/components/SettingsPanel";
 
 function App() {
@@ -24,7 +25,7 @@ function App() {
           </div>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tác giả:{" "}
+          Source code:{" "}
           <a
             href="https://github.com/PhamMinhKha/TrayLink"
             target="_blank"
@@ -40,6 +41,7 @@ function App() {
         <Tabs defaultValue="allowlist" className="space-y-4">
           <TabsList>
             <TabsTrigger value="allowlist">Apps & Commands</TabsTrigger>
+            <TabsTrigger value="remote">Remote Deck</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="logs">Request Log</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -47,6 +49,10 @@ function App() {
 
           <TabsContent value="allowlist">
             <AllowlistEditor />
+          </TabsContent>
+
+          <TabsContent value="remote">
+            <RemoteDeckEditor />
           </TabsContent>
 
           <TabsContent value="overview">

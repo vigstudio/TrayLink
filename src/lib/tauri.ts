@@ -13,6 +13,15 @@ export interface ExecEntry {
   linux?: string;
 }
 
+export interface RemoteDeckLayout {
+  display_order: string[];
+  app_order: string[];
+  command_order: string[];
+  hidden_apps: string[];
+  hidden_commands: string[];
+  custom_icons: Record<string, string>;
+}
+
 export interface AppConfig {
   port: number;
   token: string;
@@ -21,6 +30,7 @@ export interface AppConfig {
   autostart: boolean;
   apps: Record<string, AppEntry>;
   commands: Record<string, ExecEntry>;
+  remote_deck?: RemoteDeckLayout;
 }
 
 export interface LogEntry {
@@ -168,6 +178,54 @@ export async function getAppIcon(path: string): Promise<string | null> {
   return invoke<string | null>("get_app_icon", { path });
 }
 
+export async function browseDeckIconPath(): Promise<string | null> {
+  if (!isTauri()) {
+    throw new Error("Chọn icon chỉ dùng được trong app TrayLink.");
+  }
+
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const selected = await open({
+    title: "Chọn hình icon",
+    multiple: false,
+    directory: false,
+    filters: [
+      {
+        name: "Image",
+        extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg"],
+      },
+    ],
+  });
+
+  if (selected === null) {
+    return null;
+  }
+
+  return typeof selected === "string" ? selected : selected[0] ?? null;
+}
+
+export async function setDeckIconFromFile(
+  itemType: "app" | "cmd",
+  key: string,
+  sourcePath: string,
+): Promise<string> {
+  return invoke<string>("set_deck_icon_from_file", {
+    itemType,
+    key,
+    sourcePath,
+  });
+}
+
+export async function clearDeckIcon(itemType: "app" | "cmd", key: string): Promise<void> {
+  return invoke("clear_deck_icon", { itemType, key });
+}
+
+export async function getDeckIconDataUrl(
+  itemType: "app" | "cmd",
+  key: string,
+): Promise<string | null> {
+  return invoke<string | null>("get_deck_icon_data_url", { itemType, key });
+}
+
 export async function testOpenApp(appKey: string): Promise<string> {
   return invoke<string>("test_open_app", { appKey });
 }
@@ -191,6 +249,15 @@ export function apiGetUrl(
   }
   const query = search.toString();
   return `${apiBaseUrl(port, lanIp)}${path}${query ? `?${query}` : ""}`;
+}
+
+export function remoteDeckUrl(
+  port: number,
+  requireToken: boolean,
+  token: string,
+  lanIp?: string | null,
+): string {
+  return apiGetUrl(port, "/remote", {}, requireToken, token, lanIp);
 }
 
 export function formatUptime(seconds: number): string {

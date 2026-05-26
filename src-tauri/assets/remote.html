@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f0f12" />
+  <title>TrayLink Remote</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f12;
+      --surface: #1a1a22;
+      --tile: #22222e;
+      --tile-active: #2a2a3a;
+      --border: rgba(255,255,255,0.08);
+      --text: #f0f0f5;
+      --muted: #8888a0;
+      --accent: #3b82f6;
+      --success: #22c55e;
+      --error: #ef4444;
+      --tile-size: clamp(72px, 22vw, 96px);
+      --gap: clamp(10px, 3vw, 16px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.15), transparent),
+        var(--bg);
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .header {
+      padding: 16px 64px 8px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .header p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .status-dot.offline { background: var(--error); }
+
+    .section {
+      padding: 12px 20px 4px;
+    }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--tile-size), 1fr));
+      gap: var(--gap);
+      padding: 0 20px 24px;
+    }
+
+    .tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .tile-inner {
+      width: var(--tile-size);
+      height: var(--tile-size);
+      background: var(--tile);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tile:active .tile-inner,
+    .tile.pressed .tile-inner {
+      transform: scale(0.92);
+      background: var(--tile-active);
+    }
+
+    .tile.success .tile-inner {
+      box-shadow: 0 0 0 2px var(--success), 0 2px 12px rgba(34,197,94,0.3);
+    }
+
+    .tile.error .tile-inner {
+      box-shadow: 0 0 0 2px var(--error), 0 2px 12px rgba(239,68,68,0.3);
+    }
+
+    .tile img {
+      width: 58%;
+      height: 58%;
+      object-fit: contain;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    .tile .fallback-icon {
+      width: 44%;
+      height: 44%;
+      opacity: 0.7;
+    }
+
+    .tile-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: center;
+      max-width: calc(var(--tile-size) + 8px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60dvh;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-size: 0.8rem;
+      max-width: calc(100vw - 40px);
+      text-align: center;
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      pointer-events: none;
+      z-index: 100;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success { border-color: rgba(34,197,94,0.4); }
+    .toast.error { border-color: rgba(239,68,68,0.4); }
+
+    .token-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 200;
+    }
+
+    .token-overlay.hidden { display: none; }
+
+    .token-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .token-card h2 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .token-card p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .token-card input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    .token-card input:focus { border-color: var(--accent); }
+
+    .token-card button {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .toolbar {
+      position: fixed;
+      top: calc(10px + env(safe-area-inset-top));
+      right: calc(10px + env(safe-area-inset-right));
+      display: flex;
+      gap: 8px;
+      z-index: 150;
+    }
+
+    .toolbar-btn {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(26, 26, 34, 0.92);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .toolbar-btn:active {
+      transform: scale(0.94);
+    }
+
+    .toolbar-btn.active {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: rgba(59, 130, 246, 0.55);
+      color: #93c5fd;
+    }
+
+    .toolbar-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    html:fullscreen,
+    html:-webkit-full-screen {
+      background: var(--bg);
+    }
+
+    body.immersive {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body.immersive #app .header {
+      display: none;
+    }
+
+    body.immersive .grid {
+      min-height: calc(100dvh - 56px - env(safe-area-inset-top));
+      padding-top: calc(52px + env(safe-area-inset-top));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .toolbar-btn .icon-exit {
+      display: none;
+    }
+
+    body.immersive .toolbar-btn#btn-fullscreen .icon-enter,
+    html:fullscreen .toolbar-btn#btn-fullscreen .icon-enter,
+    html:-webkit-full-screen .toolbar-btn#btn-fullscreen .icon-enter {
+      display: none;
+    }
+
+    body.immersive .toolbar-btn#btn-fullscreen .icon-exit,
+    html:fullscreen .toolbar-btn#btn-fullscreen .icon-exit,
+    html:-webkit-full-screen .toolbar-btn#btn-fullscreen .icon-exit {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar" id="toolbar">
+    <button type="button" class="toolbar-btn" id="btn-fullscreen" title="Toàn màn hình" aria-label="Toàn màn hình">
+      <svg class="icon-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+        <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+      </svg>
+      <svg class="icon-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/>
+      </svg>
+    </button>
+    <button type="button" class="toolbar-btn" id="btn-keep-awake" title="Giữ màn hình sáng" aria-label="Giữ màn hình sáng">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="token-overlay" class="token-overlay hidden">
+    <div class="token-card">
+      <h2>Nhập API Token</h2>
+      <p>Server yêu cầu token để mở app. Nhập token từ Dashboard → Settings.</p>
+      <input id="token-input" type="password" placeholder="API token" autocomplete="off" />
+      <button id="token-submit">Tiếp tục</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>Đang tải...</span>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    let token = params.get("token") || sessionStorage.getItem("traylink_token") || "";
+    let deckData = null;
+
+    const toastEl = document.getElementById("toast");
+    const appEl = document.getElementById("app");
+    const tokenOverlay = document.getElementById("token-overlay");
+    const tokenInput = document.getElementById("token-input");
+    const tokenSubmit = document.getElementById("token-submit");
+    const btnFullscreen = document.getElementById("btn-fullscreen");
+    const btnKeepAwake = document.getElementById("btn-keep-awake");
+
+    let wakeLock = null;
+    let keepAwakeEnabled = localStorage.getItem("traylink_keep_awake") === "1";
+    let noSleepFallbackActive = false;
+    let noSleepAudio = null;
+    let immersiveMode = false;
+
+    function showToast(msg, type = "success") {
+      toastEl.textContent = msg;
+      toastEl.className = "toast show " + type;
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => { toastEl.className = "toast"; }, 2200);
+    }
+
+    function vibrate(ms = 30) {
+      if (navigator.vibrate) navigator.vibrate(ms);
+    }
+
+    function isNativeFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function isExpandedView() {
+      return immersiveMode || isNativeFullscreen();
+    }
+
+    function updateFullscreenButton() {
+      btnFullscreen.classList.toggle("active", isExpandedView());
+    }
+
+    function enterImmersiveMode() {
+      immersiveMode = true;
+      document.body.classList.add("immersive");
+      updateFullscreenButton();
+      window.scrollTo(0, 1);
+      window.setTimeout(() => window.scrollTo(0, 0), 50);
+      showToast("Đã bật chế độ toàn màn hình", "success");
+    }
+
+    function exitImmersiveMode() {
+      immersiveMode = false;
+      document.body.classList.remove("immersive");
+      updateFullscreenButton();
+    }
+
+    async function enterNativeFullscreen() {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+        return true;
+      }
+      if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+        return true;
+      }
+      return false;
+    }
+
+    async function exitNativeFullscreen() {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+
+    async function toggleFullscreen() {
+      if (isExpandedView()) {
+        exitImmersiveMode();
+        if (isNativeFullscreen()) {
+          try {
+            await exitNativeFullscreen();
+          } catch {}
+        }
+        updateFullscreenButton();
+        return;
+      }
+
+      try {
+        const ok = await enterNativeFullscreen();
+        if (ok) {
+          updateFullscreenButton();
+          return;
+        }
+      } catch {}
+
+      enterImmersiveMode();
+    }
+
+    async function enableNoSleepFallback() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return false;
+
+        if (!noSleepAudio) {
+          const ctx = new AudioCtx();
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.loop = true;
+          source.connect(ctx.destination);
+          source.start(0);
+          noSleepAudio = ctx;
+        }
+
+        if (noSleepAudio.state === "suspended") {
+          await noSleepAudio.resume();
+        }
+
+        noSleepFallbackActive = true;
+        return true;
+      } catch {
+        noSleepFallbackActive = false;
+        return false;
+      }
+    }
+
+    function disableNoSleepFallback() {
+      if (noSleepAudio) {
+        noSleepAudio.close().catch(() => {});
+        noSleepAudio = null;
+      }
+      noSleepFallbackActive = false;
+    }
+
+    async function acquireWakeLock() {
+      if ("wakeLock" in navigator) {
+        try {
+          if (wakeLock) {
+            await wakeLock.release();
+            wakeLock = null;
+          }
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", () => {
+            wakeLock = null;
+            updateKeepAwakeButton();
+          });
+          disableNoSleepFallback();
+          return true;
+        } catch {
+          // fallback below
+        }
+      }
+      return enableNoSleepFallback();
+    }
+
+    async function releaseWakeLock() {
+      if (wakeLock) {
+        try {
+          await wakeLock.release();
+        } catch {}
+        wakeLock = null;
+      }
+      disableNoSleepFallback();
+    }
+
+    function updateKeepAwakeButton() {
+      const active = keepAwakeEnabled && (!!wakeLock || noSleepFallbackActive);
+      btnKeepAwake.classList.toggle("active", active);
+      btnKeepAwake.title = active ? "Màn hình đang được giữ sáng" : "Giữ màn hình sáng";
+    }
+
+    async function setKeepAwake(enabled) {
+      keepAwakeEnabled = enabled;
+      localStorage.setItem("traylink_keep_awake", enabled ? "1" : "0");
+
+      if (enabled) {
+        const ok = await acquireWakeLock();
+        if (!ok) {
+          keepAwakeEnabled = false;
+          localStorage.setItem("traylink_keep_awake", "0");
+          showToast("Không thể giữ màn hình sáng trên trình duyệt này", "error");
+        } else {
+          showToast("Đã bật giữ màn hình sáng", "success");
+        }
+      } else {
+        await releaseWakeLock();
+        showToast("Đã tắt giữ màn hình sáng", "success");
+      }
+
+      updateKeepAwakeButton();
+    }
+
+    async function toggleKeepAwake() {
+      await setKeepAwake(!keepAwakeEnabled);
+    }
+
+    function setupToolbar() {
+      btnFullscreen.addEventListener("click", () => {
+        toggleFullscreen();
+      });
+
+      btnKeepAwake.addEventListener("click", () => {
+        toggleKeepAwake();
+      });
+
+      document.addEventListener("fullscreenchange", updateFullscreenButton);
+      document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+
+      document.addEventListener("visibilitychange", () => {
+        if (keepAwakeEnabled && document.visibilityState === "visible") {
+          acquireWakeLock().then(updateKeepAwakeButton);
+        }
+      });
+
+      updateFullscreenButton();
+      updateKeepAwakeButton();
+    }
+
+    function iconUrl(item) {
+      const type = item.type || "app";
+      if (item.icon && item.icon.includes(`/api/icons/${type}/`)) {
+        return item.icon;
+      }
+      if (item.icon && item.icon.startsWith("/api/icons/") && item.icon.split("/").length === 4) {
+        return item.icon;
+      }
+      return `/api/icons/${type}/${encodeURIComponent(item.key)}`;
+    }
+
+    function appDisplayLabel(key, path) {
+      if (path) {
+        const match = path.match(/([^/\\]+?)(?:\.app|\.exe)?$/i);
+        if (match && match[1] && match[1] !== key) return match[1];
+      }
+      return key.replace(/_/g, " ");
+    }
+
+    function cmdIcon() {
+      return `<svg class="fallback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+      </svg>`;
+    }
+
+    function defaultIcon() {
+      return `<svg class="fallback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/>
+      </svg>`;
+    }
+
+    async function fetchDeck() {
+      const res = await fetch("/api/deck");
+      if (!res.ok) throw new Error("Không tải được danh sách app");
+      return res.json();
+    }
+
+    async function trigger(type, key, url) {
+      const tile = document.querySelector(`[data-key="${key}"][data-type="${type}"]`);
+      if (tile) tile.classList.add("pressed");
+
+      try {
+        let res;
+        if (deckData.allow_get) {
+          const qs = new URLSearchParams({ [type === "app" ? "app" : "cmd"]: key });
+          if (type === "app" && url) qs.set("url", url);
+          if (token) qs.set("token", token);
+          res = await fetch(`/${type === "app" ? "open-app" : "exec"}?${qs}`);
+        } else {
+          const headers = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = "Bearer " + token;
+          const body = type === "app"
+            ? { app: key, ...(url ? { url } : {}) }
+            : { cmd: key };
+          res = await fetch(`/${type === "app" ? "open-app" : "exec"}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(body),
+          });
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || data.message || `Lỗi ${res.status}`);
+
+        vibrate(50);
+        if (tile) {
+          tile.classList.remove("pressed");
+          tile.classList.add("success");
+          setTimeout(() => tile.classList.remove("success"), 600);
+        }
+        showToast(data.message || "Đã gửi lệnh", "success");
+      } catch (err) {
+        vibrate([30, 50, 30]);
+        if (tile) {
+          tile.classList.remove("pressed");
+          tile.classList.add("error");
+          setTimeout(() => tile.classList.remove("error"), 800);
+        }
+        showToast(String(err.message || err), "error");
+      }
+    }
+
+    function renderTile(item) {
+      const type = item.type || "app";
+      const label = item.label || item.key;
+      const src = iconUrl(item);
+      const iconHtml = `<img src="${src}" alt="" loading="eager" decoding="async" />`;
+
+      return `
+        <button class="tile" data-key="${item.key}" data-type="${type}" aria-label="${label}">
+          <div class="tile-inner">${iconHtml}</div>
+          <span class="tile-label">${label}</span>
+        </button>`;
+    }
+
+    function render(deck) {
+      const items = deck.items || [];
+      const apps = deck.apps || [];
+      const commands = deck.commands || [];
+      const deckItems = items.length
+        ? items
+        : [
+            ...apps.map((item) => ({ ...item, type: "app" })),
+            ...commands.map((item) => ({ ...item, type: "cmd" })),
+          ];
+
+      if (deckItems.length === 0) {
+        appEl.innerHTML = `
+          <div class="header">
+            <h1><span class="status-dot"></span>TrayLink Remote</h1>
+            <p>v${deck.version || "?"}</p>
+          </div>
+          <div class="empty">Chưa có app hoặc lệnh nào.<br/>Thêm trong Dashboard → Apps & Commands.</div>`;
+        return;
+      }
+
+      appEl.innerHTML = `
+        <div class="header">
+          <h1><span class="status-dot"></span>TrayLink Remote</h1>
+          <p>Chạm để mở app trên PC · v${deck.version || "?"}</p>
+        </div>
+        <div class="grid">${deckItems.map((item) => renderTile(item)).join("")}</div>`;
+
+      appEl.querySelectorAll(".tile").forEach(tile => {
+        tile.addEventListener("click", () => {
+          const key = tile.dataset.key;
+          const type = tile.dataset.type;
+          const app = deckItems.find((item) => item.type === "app" && item.key === key);
+          trigger(type, key, app?.url);
+        });
+      });
+
+      appEl.querySelectorAll(".tile img").forEach(img => {
+        img.addEventListener("error", () => {
+          const tile = img.closest(".tile");
+          const type = tile?.dataset.type || "app";
+          img.outerHTML = type === "cmd" ? cmdIcon() : defaultIcon();
+        });
+      });
+    }
+
+    async function init() {
+      try {
+        deckData = await fetchDeck();
+
+        if (deckData.require_token && !token) {
+          tokenOverlay.classList.remove("hidden");
+          tokenSubmit.onclick = () => {
+            token = tokenInput.value.trim();
+            if (!token) return;
+            sessionStorage.setItem("traylink_token", token);
+            tokenOverlay.classList.add("hidden");
+            render(deckData);
+          };
+          tokenInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") tokenSubmit.click();
+          });
+          return;
+        }
+
+        render(deckData);
+        if (keepAwakeEnabled) {
+          acquireWakeLock().then(updateKeepAwakeButton);
+        }
+      } catch (err) {
+        appEl.innerHTML = `
+          <div class="header">
+            <h1><span class="status-dot offline"></span>TrayLink Remote</h1>
+          </div>
+          <div class="empty">${err.message || "Không kết nối được server"}</div>`;
+      }
+    }
+
+    setupToolbar();
+    init();
+  </script>
+</body>
+</html>

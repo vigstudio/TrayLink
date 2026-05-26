@@ -3,6 +3,7 @@ mod apps;
 mod config;
 mod launcher;
 mod net;
+mod remote_icons;
 mod state;
 mod tray;
 
@@ -107,6 +108,61 @@ fn get_app_icon(path: String) -> Option<String> {
 }
 
 #[tauri::command]
+fn set_deck_icon_from_file(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    item_type: String,
+    key: String,
+    source_path: String,
+) -> Result<String, String> {
+    let filename = remote_icons::save_custom_icon(&app, &source_path)?;
+    let slot = remote_icons::slot_id(&item_type, &key);
+
+    {
+        let mut cfg = state.config.write().unwrap();
+        if let Some(old) = cfg.remote_deck.custom_icons.insert(slot, filename.clone()) {
+            let _ = remote_icons::delete_custom_icon(&app, &old);
+        }
+        save_config(&app, &cfg)?;
+    }
+
+    remote_icons::custom_icon_data_url(&app, &filename).ok_or_else(|| "Không đọc được icon".to_string())
+}
+
+#[tauri::command]
+fn clear_deck_icon(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    item_type: String,
+    key: String,
+) -> Result<(), String> {
+    let slot = remote_icons::slot_id(&item_type, &key);
+
+    {
+        let mut cfg = state.config.write().unwrap();
+        if let Some(old) = cfg.remote_deck.custom_icons.remove(&slot) {
+            remote_icons::delete_custom_icon(&app, &old)?;
+        }
+        save_config(&app, &cfg)?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn get_deck_icon_data_url(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    item_type: String,
+    key: String,
+) -> Option<String> {
+    let cfg = state.config.read().unwrap();
+    let slot = remote_icons::slot_id(&item_type, &key);
+    let filename = cfg.remote_deck.custom_icons.get(&slot)?;
+    remote_icons::custom_icon_data_url(&app, filename)
+}
+
+#[tauri::command]
 fn list_installed_apps_cmd() -> Vec<apps::InstalledApp> {
     apps::list_installed_apps()
 }
@@ -187,6 +243,9 @@ pub fn run() {
             get_server_status,
             list_installed_apps_cmd,
             get_app_icon,
+            set_deck_icon_from_file,
+            clear_deck_icon,
+            get_deck_icon_data_url,
             test_open_app,
         ])
         .build(tauri::generate_context!())

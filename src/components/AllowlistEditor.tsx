@@ -12,6 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getConfig, getServerStatus, testOpenApp, updateConfig, type AppConfig } from "@/lib/tauri";
+import {
+  emptyRemoteDeckLayout,
+  syncRemoteDeckOnAppAdd,
+  syncRemoteDeckOnAppRemove,
+  syncRemoteDeckOnCommandAdd,
+  syncRemoteDeckOnCommandRemove,
+} from "@/lib/remote-deck";
 import { AppPathPicker } from "@/components/AppPathPicker";
 import { AppApiGuide } from "@/components/AppApiGuide";
 import { AppIcon } from "@/components/AppIcon";
@@ -72,6 +79,7 @@ export function AllowlistEditor() {
       return;
     }
 
+    const layout = config.remote_deck ?? emptyRemoteDeckLayout();
     const next = {
       ...config,
       apps: {
@@ -82,6 +90,7 @@ export function AllowlistEditor() {
           url: appUrl.trim() || undefined,
         },
       },
+      remote_deck: syncRemoteDeckOnAppAdd(layout, appKey),
     };
     await save(next);
     setAppKey("");
@@ -93,7 +102,12 @@ export function AllowlistEditor() {
     if (!config) return;
     const apps = { ...config.apps };
     delete apps[key];
-    await save({ ...config, apps });
+    const layout = config.remote_deck ?? emptyRemoteDeckLayout();
+    await save({
+      ...config,
+      apps,
+      remote_deck: syncRemoteDeckOnAppRemove(layout, key),
+    });
   };
 
   const handleTestApp = async (key: string) => {
@@ -111,6 +125,7 @@ export function AllowlistEditor() {
 
   const addCommand = async () => {
     if (!config || !cmdKey) return;
+    const layout = config.remote_deck ?? emptyRemoteDeckLayout();
     const next = {
       ...config,
       commands: {
@@ -121,6 +136,7 @@ export function AllowlistEditor() {
           linux: cmdLinux || undefined,
         },
       },
+      remote_deck: syncRemoteDeckOnCommandAdd(layout, cmdKey),
     };
     await save(next);
     setCmdKey("");
@@ -133,7 +149,12 @@ export function AllowlistEditor() {
     if (!config) return;
     const commands = { ...config.commands };
     delete commands[key];
-    await save({ ...config, commands });
+    const layout = config.remote_deck ?? emptyRemoteDeckLayout();
+    await save({
+      ...config,
+      commands,
+      remote_deck: syncRemoteDeckOnCommandRemove(layout, key),
+    });
   };
 
   if (!config) {

@@ -3,6 +3,13 @@ use std::process::Command;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
+pub fn get_app_icon_png(path: &str) -> Option<Vec<u8>> {
+    get_app_icon_data_url(path).and_then(|url| {
+        url.strip_prefix("data:image/png;base64,")
+            .and_then(|encoded| STANDARD.decode(encoded).ok())
+    })
+}
+
 pub fn get_app_icon_data_url(path: &str) -> Option<String> {
     let resolved = resolve_app_path(path)?;
 

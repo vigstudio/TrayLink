@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Check, Copy, Smartphone } from "lucide-react";
 import { isTauri } from "@tauri-apps/api/core";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,10 @@ import {
   getServerUptime,
   restartServer,
   apiBaseUrl,
+  remoteDeckUrl,
   type StatusResponse,
 } from "@/lib/tauri";
+import { RemoteDeckQrDialog } from "@/components/RemoteDeckQrDialog";
 
 export function ServerStatus() {
   const [port, setPort] = useState(8765);
@@ -20,6 +23,8 @@ export function ServerStatus() {
   const [uptime, setUptime] = useState(0);
   const [restarting, setRestarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const [copiedRemote, setCopiedRemote] = useState(false);
   const inTauri = isTauri();
 
   const refresh = useCallback(async () => {
@@ -33,6 +38,14 @@ export function ServerStatus() {
         setStatus(data);
         setOnline(data.online);
         setError(data.error ?? null);
+        setRemoteUrl(
+          remoteDeckUrl(
+            config.port,
+            Boolean(config.require_token),
+            config.require_token ? config.token : "",
+            data.lan_ip,
+          ),
+        );
         const seconds = await getServerUptime();
         setUptime(seconds);
         return;
@@ -55,6 +68,13 @@ export function ServerStatus() {
     const interval = setInterval(refresh, 3000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  const handleCopyRemote = async () => {
+    if (!remoteUrl) return;
+    await navigator.clipboard.writeText(remoteUrl);
+    setCopiedRemote(true);
+    window.setTimeout(() => setCopiedRemote(false), 2000);
+  };
 
   const handleRestart = async () => {
     if (!inTauri) {
@@ -123,6 +143,42 @@ export function ServerStatus() {
           </p>
         </CardContent>
       </Card>
+
+      {remoteUrl && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="size-5" />
+              Remote Deck (điện thoại)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Mở link này trên điện thoại/tablet cùng Wi‑Fi để hiển thị grid icon app
+              (kiểu Stream Deck) và chạm để mở app trên PC.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 text-xs">
+                {remoteUrl}
+              </code>
+              <Button variant="outline" size="sm" onClick={handleCopyRemote}>
+                {copiedRemote ? (
+                  <>
+                    <Check className="size-3.5" />
+                    Đã copy
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3.5" />
+                    Copy link
+                  </>
+                )}
+              </Button>
+              <RemoteDeckQrDialog url={remoteUrl} buttonLabel="Quét QR" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

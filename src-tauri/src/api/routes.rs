@@ -12,6 +12,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::api::auth::extract_token;
+use crate::api::remote;
 use crate::api::server::restart_server;
 use crate::launcher::{exec_cmd, open_app, open_file, LauncherError};
 use crate::net;
@@ -73,6 +74,7 @@ struct SuccessResponse {
 
 pub fn build_router(state: SharedState) -> Router {
     Router::new()
+        .merge(remote::routes())
         .route("/status", get(status))
         .route("/open-app", get(open_app_get).post(open_app_post))
         .route("/open-file", get(open_file_get).post(open_file_post))

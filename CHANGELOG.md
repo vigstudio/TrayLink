@@ -5,6 +5,27 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-05-26
+
+### Added
+
+- **Remote Deck** — mở link trên điện thoại/tablet cùng Wi‑Fi để điều khiển PC dạng grid icon kiểu Stream Deck
+- Trang mobile `remote.html`: grid app/command, chạm để mở app trên PC
+- API remote: `GET /`, `GET /remote`, `GET /api/deck`, `GET /api/icons/{kind}/{key}`
+- Tab **Remote Deck** trên Dashboard: xem trước, sắp xếp thứ tự, ẩn/hiện app và command
+- Kéo-thả sắp xếp bằng `@dnd-kit` (drag handle ≡), tự lưu khi thả; nút ↑/↓ làm fallback
+- Icon tùy chỉnh cho từng ô deck (chọn file / khôi phục mặc định)
+- Modal QR code để mở Remote Deck nhanh trên điện thoại
+- Toolbar mobile: toàn màn hình (Fullscreen API + chế độ immersive cho iOS Safari), giữ màn hình sáng (Wake Lock)
+- Icon SVG mặc định khi app chưa có PNG (tránh lỗi 404 trên mobile)
+- Cấu hình `remote_deck`: `display_order`, `app_order`, `command_order`, `hidden_apps`, `hidden_commands`, `custom_icons`
+- Overview hiển thị link Remote Deck và nút copy/QR
+
+### Changed
+
+- README bổ sung hướng dẫn Remote Deck
+- Allowlist editor đồng bộ layout remote deck khi thêm/xóa app hoặc command
+
 ## [0.1.0] - 2026-05-26
 
 ### Added
@@ -35,4 +56,5 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.6]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.6
 [0.1.0]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.0
