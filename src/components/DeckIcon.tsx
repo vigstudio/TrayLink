@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AppWindow, Terminal } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
-import { getDeckIconDataUrl } from "@/lib/tauri";
+import { getDeckIconCached, peekDeckIconCache } from "@/lib/icon-cache";
 import type { DeckEditorItem } from "@/lib/remote-deck";
 
 interface DeckIconProps {
@@ -11,13 +11,22 @@ interface DeckIconProps {
 }
 
 export function DeckIcon({ item, size = "sm", className = "" }: DeckIconProps) {
-  const [customUrl, setCustomUrl] = useState<string | null>(null);
+  const [customUrl, setCustomUrl] = useState<string | null>(() => {
+    if (!item.customIcon) return null;
+    return peekDeckIconCache(item.type, item.key) ?? null;
+  });
 
   useEffect(() => {
     let cancelled = false;
 
     if (item.customIcon) {
-      getDeckIconDataUrl(item.type, item.key)
+      const cached = peekDeckIconCache(item.type, item.key);
+      if (cached !== undefined) {
+        setCustomUrl(cached);
+        return;
+      }
+
+      getDeckIconCached(item.type, item.key)
         .then((url) => {
           if (!cancelled) setCustomUrl(url);
         })

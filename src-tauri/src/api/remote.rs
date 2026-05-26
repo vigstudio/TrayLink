@@ -8,7 +8,7 @@ use axum::Json;
 use serde::Serialize;
 
 use crate::apps::get_app_icon_png;
-use crate::config::RemoteDeckLayout;
+use crate::config::{AppEntry, RemoteDeckLayout};
 use crate::remote_icons::{content_type_for_filename, load_custom_icon, slot_id};
 use crate::state::{SharedState, APP_VERSION};
 
@@ -62,7 +62,7 @@ async fn deck_api(State(state): State<SharedState>) -> Json<DeckResponse> {
             "app" => config.apps.get(&key).map(|entry| DeckItem {
                 item_type: "app".to_string(),
                 key: key.clone(),
-                label: app_display_name(&key, &entry.path),
+                label: app_display_name(&key, entry),
                 icon: Some(format!("/api/icons/app/{key}")),
                 url: entry.url.clone(),
             }),
@@ -148,8 +148,15 @@ async fn legacy_app_icon(
     deck_icon(State(state), AxumPath(("app".to_string(), key))).await
 }
 
-fn app_display_name(key: &str, path: &str) -> String {
-    let path_obj = Path::new(path);
+fn app_display_name(key: &str, entry: &AppEntry) -> String {
+    if let Some(name) = &entry.name {
+        let trimmed = name.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    let path_obj = Path::new(&entry.path);
     if let Some(stem) = path_obj.file_stem() {
         let name = stem.to_string_lossy();
         if !name.is_empty() && name != key {

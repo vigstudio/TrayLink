@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,15 +19,19 @@ import {
   syncRemoteDeckOnAppRemove,
   syncRemoteDeckOnCommandAdd,
   syncRemoteDeckOnCommandRemove,
+  appDisplayLabel,
 } from "@/lib/remote-deck";
 import { AppPathPicker } from "@/components/AppPathPicker";
 import { AppApiGuide } from "@/components/AppApiGuide";
+import { AppEditDialog } from "@/components/AppEditDialog";
 import { AppIcon } from "@/components/AppIcon";
 import { isBrowserApp, validateAppUrl } from "@/lib/browser";
+import type { AppEntry } from "@/lib/tauri";
 
 export function AllowlistEditor() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [appKey, setAppKey] = useState("");
+  const [appName, setAppName] = useState("");
   const [appPath, setAppPath] = useState("");
   const [appUrl, setAppUrl] = useState("");
   const [cmdKey, setCmdKey] = useState("");
@@ -37,6 +42,7 @@ export function AllowlistEditor() {
   const [testingApp, setTestingApp] = useState<string | null>(null);
   const [lanIp, setLanIp] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [editingAppKey, setEditingAppKey] = useState<string | null>(null);
 
   const showUrlField = isBrowserApp(appPath);
 
@@ -49,12 +55,6 @@ export function AllowlistEditor() {
   useEffect(() => {
     load();
   }, []);
-
-  useEffect(() => {
-    if (!showUrlField) {
-      setAppUrl("");
-    }
-  }, [showUrlField]);
 
   const save = async (next: AppConfig) => {
     setSaving(true);
@@ -86,6 +86,7 @@ export function AllowlistEditor() {
         ...config.apps,
         [appKey]: {
           path: appPath,
+          name: appName.trim() || undefined,
           args: [],
           url: appUrl.trim() || undefined,
         },
@@ -94,8 +95,23 @@ export function AllowlistEditor() {
     };
     await save(next);
     setAppKey("");
+    setAppName("");
     setAppPath("");
     setAppUrl("");
+  };
+
+  const updateApp = async (key: string, updated: AppEntry) => {
+    if (!config) return;
+    const entry = config.apps[key];
+    if (!entry) return;
+
+    await save({
+      ...config,
+      apps: {
+        ...config.apps,
+        [key]: updated,
+      },
+    });
   };
 
   const removeApp = async (key: string) => {
@@ -162,6 +178,7 @@ export function AllowlistEditor() {
   }
 
   const appEntries = Object.entries(config.apps);
+  const editingEntry = editingAppKey ? config.apps[editingAppKey] : null;
 
   return (
     <div className="space-y-4">
@@ -173,10 +190,10 @@ export function AllowlistEditor() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-16 shrink-0">Icon</TableHead>
                 <TableHead>Key</TableHead>
+                <TableHead>Tên hiển thị</TableHead>
                 <TableHead>Path</TableHead>
-                <TableHead>URL</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
@@ -190,18 +207,28 @@ export function AllowlistEditor() {
               ) : (
                 appEntries.map(([key, entry]) => (
                   <TableRow key={key}>
-                    <TableCell>
-                      <AppIcon path={entry.path} name={key} />
+                    <TableCell className="w-16 shrink-0">
+                      <AppIcon
+                        path={entry.path}
+                        name={entry.name ?? key}
+                        size="lg"
+                      />
                     </TableCell>
                     <TableCell className="font-medium">{key}</TableCell>
+                    <TableCell>{entry.name || appDisplayLabel(key, entry.path, entry.name)}</TableCell>
                     <TableCell className="max-w-[240px] truncate font-mono text-xs">
                       {entry.path}
                     </TableCell>
-                    <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">
-                      {entry.url ?? "—"}
-                    </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingAppKey(key)}
+                        >
+                          <Pencil className="size-3.5" />
+                          Sửa
+                        </Button>
                         <Button
                           size="sm"
                           className="bg-blue-600 text-white hover:bg-blue-700"
@@ -230,24 +257,40 @@ export function AllowlistEditor() {
             </TableBody>
           </Table>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="app-key">App key</Label>
               <Input id="app-key" value={appKey} onChange={(e) => setAppKey(e.target.value)} />
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="app-path">Path / App name</Label>
-              <AppPathPicker
-                id="app-path"
-                value={appPath}
-                onChange={setAppPath}
-                onNamePick={(name) => {
-                  if (!appKey) {
-                    setAppKey(name);
-                  }
-                }}
+            <div className="space-y-2">
+              <Label htmlFor="app-name">Tên hiển thị</Label>
+              <Input
+                id="app-name"
+                value={appName}
+                onChange={(e) => setAppName(e.target.value)}
+                placeholder="VD: Google Chrome"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="app-path">Path / App</Label>
+            <AppPathPicker
+              id="app-path"
+              value={appPath}
+              onChange={(newPath) => {
+                setAppPath(newPath);
+                if (!isBrowserApp(newPath)) {
+                  setAppUrl("");
+                }
+              }}
+              onNamePick={(name) => {
+                if (!appKey) {
+                  setAppKey(name);
+                }
+              }}
+              onDisplayNamePick={setAppName}
+            />
           </div>
 
           {showUrlField && (
@@ -269,6 +312,19 @@ export function AllowlistEditor() {
           <Button onClick={addApp} disabled={saving}>
             Thêm app
           </Button>
+
+          {editingAppKey && editingEntry && (
+            <AppEditDialog
+              appKey={editingAppKey}
+              entry={editingEntry}
+              open={Boolean(editingAppKey)}
+              saving={saving}
+              onOpenChange={(open) => {
+                if (!open) setEditingAppKey(null);
+              }}
+              onSave={(updated) => updateApp(editingAppKey, updated)}
+            />
+          )}
         </CardContent>
       </Card>
 

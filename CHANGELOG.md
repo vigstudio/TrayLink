@@ -5,6 +5,24 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-05-26
+
+### Added
+
+- Trường **Tên hiển thị** (`name`) cho app — Remote Deck hiện tên thay vì key
+- Nút **Sửa** + dialog chỉnh tên, path, URL mặc định (key giữ nguyên)
+- Cache icon app/deck trong RAM — chuyển tab Remote Deck nhanh hơn
+
+### Changed
+
+- Tab Remote Deck giữ mounted (`forceMount`), refresh nền khi quay lại
+- Icon app trong bảng **Apps đã đăng ký** lớn hơn (48px), cột icon cố định
+- Ẩn cột URL khỏi bảng — xem/sửa trong dialog **Sửa**
+
+### Fixed
+
+- Sửa Chrome: dialog **Sửa** không load URL cũ do effect xóa URL nhầm lúc mở
+
 ## [0.1.6] - 2026-05-26
 
 ### Added
@@ -56,5 +74,6 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.7]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.7
 [0.1.6]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.6
 [0.1.0]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.0

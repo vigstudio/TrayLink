@@ -125,6 +125,8 @@ pub struct AppConfig {
 pub struct AppEntry {
     pub path: String,
     #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
     pub args: Vec<String>,
     #[serde(default)]
     pub url: Option<String>,

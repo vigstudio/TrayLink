@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DevBanner } from "@/components/DevBanner";
 import { ServerStatus } from "@/components/ServerStatus";
@@ -7,6 +8,8 @@ import { RemoteDeckEditor } from "@/components/RemoteDeckEditor";
 import { SettingsPanel } from "@/components/SettingsPanel";
 
 function App() {
+  const [activeTab, setActiveTab] = useState("allowlist");
+
   return (
     <div className="min-h-screen bg-background">
       <DevBanner />
@@ -38,7 +41,7 @@ function App() {
       </header>
 
       <main className="p-6">
-        <Tabs defaultValue="allowlist" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="allowlist">Apps & Commands</TabsTrigger>
             <TabsTrigger value="remote">Remote Deck</TabsTrigger>
@@ -51,8 +54,8 @@ function App() {
             <AllowlistEditor />
           </TabsContent>
 
-          <TabsContent value="remote">
-            <RemoteDeckEditor />
+          <TabsContent value="remote" forceMount className="data-[state=inactive]:hidden">
+            <RemoteDeckEditor active={activeTab === "remote"} />
           </TabsContent>
 
           <TabsContent value="overview">

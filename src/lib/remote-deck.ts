@@ -27,7 +27,10 @@ export function parseSlotId(slot: string): { type: DeckItemType; key: string } |
   return null;
 }
 
-export function appDisplayLabel(key: string, path?: string): string {
+export function appDisplayLabel(key: string, path?: string, name?: string): string {
+  if (name?.trim()) {
+    return name.trim();
+  }
   if (path) {
     const match = path.match(/([^/\\]+?)(?:\.app|\.exe)?$/i);
     if (match?.[1] && match[1] !== key) {
@@ -94,7 +97,11 @@ export function buildDeckItems(config: AppConfig): DeckEditorItem[] {
       seen.add(slot);
       items.push({
         key: parsed.key,
-        label: appDisplayLabel(parsed.key, config.apps[parsed.key]?.path),
+        label: appDisplayLabel(
+          parsed.key,
+          config.apps[parsed.key]?.path,
+          config.apps[parsed.key]?.name,
+        ),
         path: config.apps[parsed.key]?.path,
         visible: !hiddenApps.has(parsed.key),
         type: "app",
@@ -121,7 +128,7 @@ export function buildDeckItems(config: AppConfig): DeckEditorItem[] {
     seen.add(slot);
     items.push({
       key,
-      label: appDisplayLabel(key, config.apps[key]?.path),
+      label: appDisplayLabel(key, config.apps[key]?.path, config.apps[key]?.name),
       path: config.apps[key]?.path,
       visible: !hiddenApps.has(key),
       type: "app",

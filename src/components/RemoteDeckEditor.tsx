@@ -21,6 +21,7 @@ import {
   reorderTypeItems,
   type DeckEditorItem,
 } from "@/lib/remote-deck";
+import { invalidateDeckIconCache } from "@/lib/icon-cache";
 
 function DeckSection({
   title,
@@ -82,7 +83,7 @@ function DeckSection({
   );
 }
 
-export function RemoteDeckEditor() {
+export function RemoteDeckEditor({ active = true }: { active?: boolean }) {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [deckItems, setDeckItems] = useState<DeckEditorItem[]>([]);
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
@@ -91,6 +92,8 @@ export function RemoteDeckEditor() {
   const [dirty, setDirty] = useState(false);
   const deckItemsRef = useRef<DeckEditorItem[]>([]);
   const configRef = useRef<AppConfig | null>(null);
+  const dirtyRef = useRef(false);
+  const hasLoadedRef = useRef(false);
 
   const syncDeckItems = useCallback((items: DeckEditorItem[]) => {
     deckItemsRef.current = items;
@@ -101,10 +104,19 @@ export function RemoteDeckEditor() {
     configRef.current = config;
   }, [config]);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
+
+  const load = useCallback(async (options?: { silent?: boolean; force?: boolean }) => {
+    const silent = Boolean(options?.silent && hasLoadedRef.current);
+    const force = Boolean(options?.force);
+
     const [data, status] = await Promise.all([getConfig(), getServerStatus()]);
     setConfig(data);
-    syncDeckItems(buildDeckItems(data));
+    if (force || !silent || !dirtyRef.current) {
+      syncDeckItems(buildDeckItems(data));
+    }
     setRemoteUrl(
       remoteDeckUrl(
         data.port,
@@ -113,12 +125,16 @@ export function RemoteDeckEditor() {
         status.lan_ip,
       ),
     );
-    setDirty(false);
+    if (force || !silent) {
+      setDirty(false);
+    }
+    hasLoadedRef.current = true;
   }, [syncDeckItems]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!active) return;
+    void load({ silent: hasLoadedRef.current });
+  }, [active, load]);
 
   const appItems = deckItems.filter((item) => item.type === "app");
   const commandItems = deckItems.filter((item) => item.type === "cmd");
@@ -175,6 +191,7 @@ export function RemoteDeckEditor() {
       }
 
       await setDeckIconFromFile(item.type, item.key, sourcePath);
+      invalidateDeckIconCache(item.type, item.key);
       const refreshed = await getConfig();
       const merged = mergeConfigWithLocalLayout(refreshed, localItems);
       if (JSON.stringify(merged.remote_deck) !== JSON.stringify(refreshed.remote_deck)) {
@@ -196,6 +213,7 @@ export function RemoteDeckEditor() {
       }
 
       await clearDeckIcon(item.type, item.key);
+      invalidateDeckIconCache(item.type, item.key);
       const refreshed = await getConfig();
       const merged = mergeConfigWithLocalLayout(refreshed, localItems);
       if (JSON.stringify(merged.remote_deck) !== JSON.stringify(refreshed.remote_deck)) {
@@ -299,7 +317,7 @@ export function RemoteDeckEditor() {
         <Button onClick={save} disabled={saving || !dirty || !hasItems}>
           {saving ? "Đang lưu..." : "Lưu bố cục"}
         </Button>
-        <Button variant="outline" onClick={load} disabled={saving}>
+        <Button variant="outline" onClick={() => void load({ force: true })} disabled={saving}>
           Hoàn tác thay đổi
         </Button>
         {message && <p className="text-sm text-muted-foreground">{message}</p>}

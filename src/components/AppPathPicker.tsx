@@ -18,10 +18,11 @@ interface AppPathPickerProps {
   id?: string;
   value: string;
   onChange: (path: string) => void;
-  onNamePick?: (name: string) => void;
+  onNamePick?: (key: string) => void;
+  onDisplayNamePick?: (name: string) => void;
 }
 
-export function AppPathPicker({ id, value, onChange, onNamePick }: AppPathPickerProps) {
+export function AppPathPicker({ id, value, onChange, onNamePick, onDisplayNamePick }: AppPathPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [apps, setApps] = useState<InstalledApp[]>([]);
@@ -73,6 +74,7 @@ export function AppPathPicker({ id, value, onChange, onNamePick }: AppPathPicker
   const handleSelect = (app: InstalledApp) => {
     onChange(app.path);
     onNamePick?.(slugifyAppKey(app.name));
+    onDisplayNamePick?.(app.name);
     setOpen(false);
     setQuery("");
   };
@@ -85,7 +87,9 @@ export function AppPathPicker({ id, value, onChange, onNamePick }: AppPathPicker
       }
       onChange(path);
       const baseName = path.split(/[/\\]/).pop() ?? path;
-      onNamePick?.(slugifyAppKey(baseName));
+      const displayName = baseName.replace(/\.(app|exe)$/i, "");
+      onNamePick?.(slugifyAppKey(displayName));
+      onDisplayNamePick?.(displayName);
       setOpen(false);
     } catch (err) {
       setError(String(err));

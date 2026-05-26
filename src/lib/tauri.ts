@@ -2,6 +2,7 @@ import { invoke as tauriInvoke, isTauri } from "@tauri-apps/api/core";
 
 export interface AppEntry {
   path: string;
+  name?: string;
   args?: string[];
   url?: string;
 }
