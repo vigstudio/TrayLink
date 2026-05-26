@@ -1,7 +1,6 @@
-use std::net::SocketAddr;
 use std::time::Instant;
 
-use axum::extract::{ConnectInfo, Query, State};
+use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -12,6 +11,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::api::auth::extract_token;
+use crate::api::client_ip::ClientIp;
 use crate::api::remote;
 use crate::api::server::{https_port, restart_server};
 use crate::launcher::{exec_cmd, open_app, open_file, LauncherError};
@@ -109,7 +109,7 @@ fn reject_get_disabled() -> Response {
 
 async fn open_app_post(
     State(state): State<SharedState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ClientIp(ip): ClientIp,
     headers: HeaderMap,
     Json(body): Json<OpenAppRequest>,
 ) -> Response {
@@ -121,7 +121,7 @@ async fn open_app_post(
             "/open-app",
             401,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return resp;
     }
@@ -130,7 +130,7 @@ async fn open_app_post(
         &state,
         "POST",
         started,
-        addr,
+        &ip,
         &body.app,
         body.url.as_deref(),
     )
@@ -138,7 +138,7 @@ async fn open_app_post(
 
 async fn open_app_get(
     State(state): State<SharedState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ClientIp(ip): ClientIp,
     headers: HeaderMap,
     Query(query): Query<OpenAppQuery>,
 ) -> Response {
@@ -150,7 +150,7 @@ async fn open_app_get(
             "/open-app",
             405,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return reject_get_disabled();
     }
@@ -162,7 +162,7 @@ async fn open_app_get(
             "/open-app",
             401,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return resp;
     }
@@ -171,7 +171,7 @@ async fn open_app_get(
         &state,
         "GET",
         started,
-        addr,
+        &ip,
         &query.app,
         query.url.as_deref(),
     )
@@ -181,7 +181,7 @@ fn handle_open_app(
     state: &SharedState,
     method: &str,
     started: Instant,
-    addr: SocketAddr,
+    client_ip: &str,
     app: &str,
     url: Option<&str>,
 ) -> Response {
@@ -194,7 +194,7 @@ fn handle_open_app(
                 "/open-app",
                 200,
                 started.elapsed().as_millis() as u64,
-                &addr.ip().to_string(),
+                client_ip,
             );
             let detail = url
                 .filter(|value| !value.is_empty())
@@ -209,13 +209,13 @@ fn handle_open_app(
             )
                 .into_response()
         }
-        Err(err) => error_response(state, method, "/open-app", started, addr, err),
+        Err(err) => error_response(state, method, "/open-app", started, client_ip, err),
     }
 }
 
 async fn open_file_post(
     State(state): State<SharedState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ClientIp(ip): ClientIp,
     headers: HeaderMap,
     Json(body): Json<OpenFileRequest>,
 ) -> Response {
@@ -227,17 +227,17 @@ async fn open_file_post(
             "/open-file",
             401,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return resp;
     }
 
-    handle_open_file(&state, "POST", started, addr, &body.path)
+    handle_open_file(&state, "POST", started, &ip, &body.path)
 }
 
 async fn open_file_get(
     State(state): State<SharedState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ClientIp(ip): ClientIp,
     headers: HeaderMap,
     Query(query): Query<OpenFileQuery>,
 ) -> Response {
@@ -249,7 +249,7 @@ async fn open_file_get(
             "/open-file",
             405,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return reject_get_disabled();
     }
@@ -261,19 +261,19 @@ async fn open_file_get(
             "/open-file",
             401,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return resp;
     }
 
-    handle_open_file(&state, "GET", started, addr, &query.path)
+    handle_open_file(&state, "GET", started, &ip, &query.path)
 }
 
 fn handle_open_file(
     state: &SharedState,
     method: &str,
     started: Instant,
-    addr: SocketAddr,
+    client_ip: &str,
     path: &str,
 ) -> Response {
     match open_file::open_file(path) {
@@ -284,7 +284,7 @@ fn handle_open_file(
                 "/open-file",
                 200,
                 started.elapsed().as_millis() as u64,
-                &addr.ip().to_string(),
+                client_ip,
             );
             (
                 StatusCode::OK,
@@ -295,13 +295,13 @@ fn handle_open_file(
             )
                 .into_response()
         }
-        Err(err) => error_response(state, method, "/open-file", started, addr, err),
+        Err(err) => error_response(state, method, "/open-file", started, client_ip, err),
     }
 }
 
 async fn exec_post(
     State(state): State<SharedState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ClientIp(ip): ClientIp,
     headers: HeaderMap,
     Json(body): Json<ExecRequest>,
 ) -> Response {
@@ -313,17 +313,17 @@ async fn exec_post(
             "/exec",
             401,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return resp;
     }
 
-    handle_exec(&state, "POST", started, addr, &body.cmd)
+    handle_exec(&state, "POST", started, &ip, &body.cmd)
 }
 
 async fn exec_get(
     State(state): State<SharedState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ClientIp(ip): ClientIp,
     headers: HeaderMap,
     Query(query): Query<ExecQuery>,
 ) -> Response {
@@ -335,7 +335,7 @@ async fn exec_get(
             "/exec",
             405,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return reject_get_disabled();
     }
@@ -347,19 +347,19 @@ async fn exec_get(
             "/exec",
             401,
             started.elapsed().as_millis() as u64,
-            &addr.ip().to_string(),
+            &ip,
         );
         return resp;
     }
 
-    handle_exec(&state, "GET", started, addr, &query.cmd)
+    handle_exec(&state, "GET", started, &ip, &query.cmd)
 }
 
 fn handle_exec(
     state: &SharedState,
     method: &str,
     started: Instant,
-    addr: SocketAddr,
+    client_ip: &str,
     cmd: &str,
 ) -> Response {
     let commands = state.config.read().unwrap().commands.clone();
@@ -379,7 +379,7 @@ fn handle_exec(
                 "/exec",
                 200,
                 started.elapsed().as_millis() as u64,
-                &addr.ip().to_string(),
+                client_ip,
             );
             (
                 StatusCode::OK,
@@ -390,7 +390,7 @@ fn handle_exec(
             )
                 .into_response()
         }
-        Err(err) => error_response(state, method, "/exec", started, addr, err),
+        Err(err) => error_response(state, method, "/exec", started, client_ip, err),
     }
 }
 
@@ -399,7 +399,7 @@ fn error_response(
     method: &str,
     path: &str,
     started: Instant,
-    addr: SocketAddr,
+    client_ip: &str,
     err: LauncherError,
 ) -> Response {
     let status = match &err {
@@ -415,7 +415,7 @@ fn error_response(
         path,
         status.as_u16(),
         started.elapsed().as_millis() as u64,
-        &addr.ip().to_string(),
+        client_ip,
     );
 
     (

@@ -107,6 +107,10 @@ fn macos_icon_data_url(app_path: &Path) -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn windows_icon_data_url(path: &Path) -> Option<String> {
+    if path.extension().and_then(|ext| ext.to_str()) == Some("lnk") {
+        return None;
+    }
+
     if !path.is_file() {
         return None;
     }
@@ -129,6 +133,8 @@ fn windows_icon_data_url(path: &Path) -> Option<String> {
         .args([
             "-NoProfile",
             "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
             "-Command",
             &script,
         ])

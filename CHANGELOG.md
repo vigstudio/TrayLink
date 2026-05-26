@@ -5,6 +5,14 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-05-26
+
+### Fixed
+
+- Windows: bấm **Chọn app** không còn mở PowerShell liên tục (bỏ tải icon từng shortcut trong dropdown)
+- Remote Deck / API qua HTTPS: sửa lỗi `Missing request extension: ConnectInfo` khi chạm mở app trên PC
+- PowerShell lấy icon ẩn cửa sổ (`-WindowStyle Hidden`); bỏ qua icon cho file `.lnk`
+
 ## [0.1.8] - 2026-05-26
 
 ### Added
@@ -93,6 +101,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.9]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.9
 [0.1.8]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.8
 [0.1.7]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.7
 [0.1.6]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.6
