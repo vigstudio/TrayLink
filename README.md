@@ -21,9 +21,7 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 
 ### Video sử dụng đồng hồ AI để mở ứng dụng
 
-<video src="docs/cach-su-dung.mp4" controls width="720">
-  <a href="docs/cach-su-dung.mp4">Tải video hướng dẫn (docs/cach-su-dung.mov)</a>
-</video>
+![Hướng dẫn sử dụng — đồng hồ AI mở ứng dụng qua TrayLink](docs/cach-su-dung.gif)
 
 *Cài app → thêm app → copy link API — dùng với Stream Deck / thiết bị trên LAN.*
 
