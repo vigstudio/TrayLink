@@ -102,6 +102,9 @@ fi
 if [[ ! -d "$DMG_DIR" ]]; then
   DMG_DIR="$ROOT_DIR/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg"
 fi
+if [[ ! -d "$DMG_DIR" ]]; then
+  DMG_DIR="$ROOT_DIR/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg"
+fi
 if [[ -d "$DMG_DIR" ]]; then
   find "$DMG_DIR" -maxdepth 1 -name "*.dmg" ! -name "rw.*" -exec cp {} "$RELEASE_DIR"/ \; 2>/dev/null || true
 fi

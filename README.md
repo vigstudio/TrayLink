@@ -46,7 +46,9 @@ Chi tiết: [`scripts/BUILD.md`](scripts/BUILD.md)
 #### Tải nhanh (mọi lần build)
 
 Sau khi build xong, vào **Actions → Build Release → run mới nhất → Artifacts**:
-- `traylink-macos`
+- `traylink-macos-universal` — macOS Intel + Apple Silicon (một file)
+- `traylink-macos-arm64` — macOS Apple Silicon (M1/M2/M3…)
+- `traylink-macos-x64` — macOS Intel
 - `traylink-windows`
 
 #### Xuất hiện trên trang Releases
@@ -59,7 +61,9 @@ git push origin v0.1.0
 ```
 
 File trên Releases (ví dụ `v0.1.0`):
-- `TrayLink-macos-universal.zip` — `.app` cho macOS
+- `TrayLink-macos-universal.zip` — chạy cả Intel + Apple Silicon
+- `TrayLink-macos-arm64.zip` — chỉ Apple Silicon
+- `TrayLink-macos-x64.zip` — chỉ Intel
 - `TrayLink_0.1.0_x64-setup.exe` — installer Windows (nếu build NSIS thành công)
 - `.dmg` — nếu bundling DMG thành công trên CI
 
@@ -68,6 +72,24 @@ File trên Releases (ví dụ `v0.1.0`):
 Hoặc vào **Actions → Build Release → Run workflow** để build thủ công (chỉ có Artifacts, **không** tạo Releases page).
 
 Mỗi lần push lên `main` cũng tự chạy build (Artifacts only, không tạo Release).
+
+### macOS: cảnh báo “Apple could not verify…”
+
+Bản build từ GitHub / build local **chưa code-sign & notarize** nên macOS (Gatekeeper) chặn lần mở đầu. **Không phải virus** — chỉ là app chưa được Apple xác minh danh tính developer.
+
+**Cách mở (chọn một):**
+
+1. **Control + click** (hoặc chuột phải) vào `TrayLink.app` → **Open** → **Open** lần nữa  
+2. **System Settings → Privacy & Security** → cuộn xuống → **Open Anyway** (sau khi thử mở app lần đầu)  
+3. Terminal (bỏ cờ quarantine nếu tải từ browser/GitHub):
+
+```bash
+xattr -cr /Applications/TrayLink.app
+```
+
+Thay đường dẫn nếu app nằm chỗ khác (vd. `release/macos/TrayLink.app`).
+
+**Phân phối chính thức (tùy chọn):** cần [Apple Developer Program](https://developer.apple.com/programs/) ($99/năm), ký app bằng Developer ID, rồi notarize qua `notarytool` — khi đó người dùng mở không còn cảnh báo.
 
 ## HTTP API
 
