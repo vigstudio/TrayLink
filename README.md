@@ -1,20 +1,74 @@
 # TrayLink
 
-App launcher chạy nền trên PC, lắng nghe HTTP API trên `localhost` để mở ứng dụng, mở file, hoặc chạy lệnh đã whitelist.
+App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để mở ứng dụng, mở file, hoặc chạy lệnh đã whitelist.
 
 **Stack:** Tauri 2 + Rust + React + shadcn/ui
 
+![Dashboard — Apps & Commands](docs/screenshot1.png)
+
 ## Tính năng
 
-- HTTP REST API trên `127.0.0.1:8765` (port cấu hình được)
-- System tray với menu: Open Dashboard, Restart Server, Exit
-- Chạy nền — đóng cửa sổ sẽ ẩn xuống tray, không thoát app
-- Autostart khi boot (bật/tắt từ Dashboard)
-- Allowlist apps và command whitelist
-- Bearer token bảo vệ các endpoint POST
-- Dashboard: trạng thái server, request log, quản lý allowlist, settings
+- HTTP REST API trên LAN (mặc định port `8765`, IP LAN tự phát hiện)
+- **GET** bằng link URL hoặc **POST** bằng curl/JSON — bật/tắt GET trong Settings
+- Token API **tùy chọn** (mặc định tắt, phù hợp dùng trong LAN)
+- System tray (menu bar / system tray): Open Dashboard, Restart Server, Exit
+- Chạy nền — đóng cửa sổ chỉ ẩn app, không thoát (macOS: không hiện Dock)
+- Autostart khi boot
+- Allowlist apps + command whitelist
+- Dashboard: trạng thái server, request log, quản lý app, settings, copy link API
 
-## Yêu cầu
+## Hướng dẫn sử dụng
+
+### Video sử dụng đồng hồ AI để mở ứng dụng
+
+<video src="docs/cach-su-dung.mov" controls width="720">
+  <a href="docs/cach-su-dung.mov">Tải video hướng dẫn (docs/cach-su-dung.mov)</a>
+</video>
+
+*Cài app → thêm app → copy link API — dùng với Stream Deck / thiết bị trên LAN.*
+
+**Sản phẩm trong video:** [Đồng hồ AI — loaai.me](https://loaai.me)
+
+### Các bước nhanh
+
+1. **Cài & mở TrayLink** — app chạy nền, icon nằm trên **menu bar** (macOS) hoặc **system tray** (Windows).
+2. **Open Dashboard** từ menu tray → tab **Apps & Commands**.
+3. **Thêm app** — nhập key (vd: `chrome`), chọn app từ danh sách hoặc duyệt file `.app` / `.exe`.
+4. **Test** — thử mở app trên máy này.
+5. **API** — mở modal, **Copy** link GET hoặc lệnh curl POST (dùng IP LAN, vd `http://192.168.1.x:8765/open-app?app=chrome`).
+6. Dán link vào **Stream Deck**, shortcut, trình duyệt trên điện thoại/tablet cùng Wi‑Fi, hoặc gọi từ script.
+
+![Modal API — copy link GET / curl POST](docs/screenshot2.png)
+
+### Ví dụ gọi API từ thiết bị khác (LAN)
+
+```bash
+# Kiểm tra server (GET)
+curl http://192.168.1.x:8765/status
+
+# Mở app bằng link (GET — cần bật "Cho phép GET" trong Settings)
+open "http://192.168.1.x:8765/open-app?app=chrome"
+
+# Hoặc POST
+curl -X POST http://192.168.1.x:8765/open-app \
+  -H "Content-Type: application/json" \
+  -d '{"app":"chrome"}'
+```
+
+Thay `192.168.1.x` bằng **IP LAN** hiển thị trong Dashboard → **Overview** hoặc modal **API**.
+
+## Tải bản cài đặt
+
+Tải từ [GitHub Releases](https://github.com/PhamMinhKha/TrayLink/releases) hoặc build local (xem bên dưới).
+
+| Nền tảng | File |
+|----------|------|
+| macOS (mọi Mac) | `TrayLink-macos-universal.zip` |
+| macOS Apple Silicon | `TrayLink-macos-arm64.zip` |
+| macOS Intel | `TrayLink-macos-x64.zip` |
+| Windows | `TrayLink_*_x64-setup.exe` |
+
+## Yêu cầu (dev / build)
 
 - [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/) 1.88+
@@ -27,7 +81,7 @@ npm install
 npm run tauri dev
 ```
 
-App khởi động ẩn — click icon tray → **Open Dashboard** để mở giao diện.
+App khởi động ẩn — click icon tray → **Open Dashboard**.
 
 ## Build production
 
@@ -89,67 +143,58 @@ xattr -cr /Applications/TrayLink.app
 
 Thay đường dẫn nếu app nằm chỗ khác (vd. `release/macos/TrayLink.app`).
 
-**Phân phối chính thức (tùy chọn):** cần [Apple Developer Program](https://developer.apple.com/programs/) ($99/năm), ký app bằng Developer ID, rồi notarize qua `notarytool` — khi đó người dùng mở không còn cảnh báo.
+**Phân phối chính thức (tùy chọn):** cần [Apple Developer Program](https://developer.apple.com/programs/) ($99/năm), ký app bằng Developer ID, rồi notarize qua `notarytool`.
 
 ## HTTP API
 
-Base URL: `http://127.0.0.1:8765`
+Base URL: `http://<IP-LAN>:8765` (IP hiển thị trong Dashboard)
 
 ### GET /status
 
-Không cần token.
-
 ```bash
-curl http://127.0.0.1:8765/status
+curl http://192.168.1.x:8765/status
 ```
 
 Response:
 
 ```json
-{ "online": true, "version": "0.1.0" }
+{ "online": true, "version": "0.1.0", "port": 8765, "lan_ip": "192.168.1.x" }
 ```
 
-### POST /open-app
-
-Mở app theo key trong allowlist.
+### GET /open-app, /open-file, /exec (khi bật trong Settings)
 
 ```bash
-curl -X POST http://127.0.0.1:8765/open-app \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"app":"obs"}'
+# Mở app
+http://192.168.1.x:8765/open-app?app=chrome
+
+# Mở app + URL (trình duyệt)
+http://192.168.1.x:8765/open-app?app=chrome&url=https://google.com
+
+# Mở file
+http://192.168.1.x:8765/open-file?path=/Users/you/video.mp4
+
+# Chạy lệnh whitelist
+http://192.168.1.x:8765/exec?cmd=restart_server
 ```
 
-### POST /open-file
+Nếu bật token: thêm `&token=<token>` vào URL.
 
-Mở file bằng ứng dụng mặc định của OS.
+### POST /open-app, /open-file, /exec
 
 ```bash
-curl -X POST http://127.0.0.1:8765/open-file \
-  -H "Authorization: Bearer <token>" \
+curl -X POST http://192.168.1.x:8765/open-app \
   -H "Content-Type: application/json" \
-  -d '{"path":"/Users/you/video.mp4"}'
+  -d '{"app":"chrome"}'
 ```
 
-### POST /exec
-
-Chạy command key đã whitelist (không nhận shell tùy ý).
-
-```bash
-curl -X POST http://127.0.0.1:8765/exec \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"cmd":"restart_server"}'
-```
+Khi bật token, thêm header `Authorization: Bearer <token>`.
 
 ## Xác thực
 
-Gửi token qua một trong hai header:
+Mặc định **tắt** — phù hợp LAN tin cậy. Bật trong Dashboard → **Settings → Yêu cầu token API**.
 
-- `Authorization: Bearer <token>`
-- `X-API-Token: <token>`
-
-Token hiển thị trong Dashboard → tab **Settings**. Có thể regenerate bất cứ lúc nào.
+- Header: `Authorization: Bearer <token>` hoặc `X-API-Token: <token>`
+- GET: query `?token=<token>`
 
 ## Cấu hình
 
@@ -159,34 +204,22 @@ Config lưu tại app data directory:
 - **Windows:** `%APPDATA%\com.phamminhkha.traylink\config.json`
 - **Linux:** `~/.config/com.phamminhkha.traylink/config.json`
 
-Defaults mẫu: [`config/defaults.json`](config/defaults.json)
+Defaults: [`config/defaults.json`](config/defaults.json)
 
-```json
-{
-  "port": 8765,
-  "token": "<auto-generated>",
-  "autostart": false,
-  "apps": {
-    "obs": { "path": "C:/Program Files/obs-studio/bin/64bit/obs64.exe", "args": [] }
-  },
-  "commands": {
-    "restart_server": { "internal": true },
-    "shutdown": {
-      "win": "shutdown /s /t 0",
-      "mac": "osascript -e 'tell app \"System Events\" to shut down'",
-      "linux": "systemctl poweroff"
-    }
-  }
-}
-```
+| Tuỳ chọn | Mặc định | Mô tả |
+|----------|----------|--------|
+| `port` | `8765` | Port API |
+| `require_token` | `false` | Bắt buộc token |
+| `allow_get` | `true` | Cho phép gọi API bằng link GET |
+| `autostart` | `false` | Tự chạy khi boot |
 
 ## Bảo mật
 
-- Server chỉ bind `127.0.0.1` (localhost)
-- POST endpoints yêu cầu token
-- Chỉ mở app/command có trong allowlist
+- Server bind `0.0.0.0` — thiết bị trong **cùng LAN** có thể gọi API
+- Chỉ mở app/command/file có trong allowlist
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
+- Nên bật token nếu mạng LAN không tin cậy; cân nhắc firewall cho port API
 
 ## Cross-platform
 
@@ -201,6 +234,7 @@ Defaults mẫu: [`config/defaults.json`](config/defaults.json)
 ```
 TrayLink/
 ├── config/defaults.json       # Config mặc định
+├── docs/                      # Screenshot & video hướng dẫn
 ├── src/                       # React dashboard (shadcn/ui)
 └── src-tauri/src/
     ├── api/                   # Axum HTTP server
