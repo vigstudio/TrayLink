@@ -193,6 +193,7 @@ export function AllowlistEditor() {
                           port={config.port}
                           token={config.token}
                           requireToken={config.require_token ?? false}
+                          allowGet={config.allow_get ?? true}
                         />
                         <Button variant="destructive" size="sm" onClick={() => removeApp(key)}>
                           Xóa

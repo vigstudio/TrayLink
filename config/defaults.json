@@ -2,6 +2,7 @@
   "port": 8765,
   "token": "",
   "require_token": false,
+  "allow_get": true,
   "autostart": false,
   "apps": {},
   "commands": {

@@ -17,6 +17,7 @@ export interface AppConfig {
   port: number;
   token: string;
   require_token?: boolean;
+  allow_get?: boolean;
   autostart: boolean;
   apps: Record<string, AppEntry>;
   commands: Record<string, ExecEntry>;
@@ -160,6 +161,26 @@ export async function getAppIcon(path: string): Promise<string | null> {
 
 export async function testOpenApp(appKey: string): Promise<string> {
   return invoke<string>("test_open_app", { appKey });
+}
+
+export function apiGetUrl(
+  port: number,
+  path: string,
+  params: Record<string, string | undefined>,
+  requireToken: boolean,
+  token: string,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      search.set(key, value);
+    }
+  }
+  if (requireToken && token) {
+    search.set("token", token);
+  }
+  const query = search.toString();
+  return `http://127.0.0.1:${port}${path}${query ? `?${query}` : ""}`;
 }
 
 export function formatUptime(seconds: number): string {

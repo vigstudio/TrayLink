@@ -4,12 +4,18 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+fn default_allow_get() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub port: u16,
     pub token: String,
     #[serde(default)]
     pub require_token: bool,
+    #[serde(default = "default_allow_get")]
+    pub allow_get: bool,
     pub autostart: bool,
     pub apps: HashMap<String, AppEntry>,
     pub commands: HashMap<String, ExecEntry>,

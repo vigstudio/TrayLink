@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
+  apiGetUrl,
   getAutostartEnabled,
   getConfig,
   regenerateToken,
@@ -25,6 +26,7 @@ export function SettingsPanel() {
   const [port, setPort] = useState("8765");
   const [token, setToken] = useState("");
   const [requireToken, setRequireToken] = useState(false);
+  const [allowGet, setAllowGet] = useState(true);
   const [showToken, setShowToken] = useState(false);
   const [autostart, setAutostartState] = useState(false);
   const [message, setMessage] = useState("");
@@ -34,6 +36,7 @@ export function SettingsPanel() {
     setPort(String(config.port));
     setToken(config.token);
     setRequireToken(config.require_token ?? false);
+    setAllowGet(config.allow_get ?? true);
     const enabled = await getAutostartEnabled();
     setAutostartState(enabled);
   };
@@ -66,6 +69,17 @@ export function SettingsPanel() {
     setMessage(enabled ? "Đã bật xác thực token" : "Đã tắt token — API mở cho LAN");
   };
 
+  const handleAllowGet = async (enabled: boolean) => {
+    const config = await getConfig();
+    await updateConfig({ ...config, allow_get: enabled });
+    setAllowGet(enabled);
+    setMessage(
+      enabled
+        ? "Đã bật GET — có thể gọi API bằng link URL"
+        : "Đã tắt GET — chỉ dùng POST",
+    );
+  };
+
   const handleRegenerateToken = async () => {
     const newToken = await regenerateToken();
     setToken(newToken);
@@ -83,6 +97,29 @@ export function SettingsPanel() {
     setMessage(enabled ? "Đã bật autostart" : "Đã tắt autostart");
   };
 
+  const portNum = Number(port) || 8765;
+  const openAppGetUrl = apiGetUrl(
+    portNum,
+    "/open-app",
+    { app: "my-app" },
+    requireToken,
+    showToken ? token : "<token>",
+  );
+  const openFileGetUrl = apiGetUrl(
+    portNum,
+    "/open-file",
+    { path: "/path/to/file.mp4" },
+    requireToken,
+    showToken ? token : "<token>",
+  );
+  const execGetUrl = apiGetUrl(
+    portNum,
+    "/exec",
+    { cmd: "restart_server" },
+    requireToken,
+    showToken ? token : "<token>",
+  );
+
   return (
     <div className="space-y-4">
       <Card>
@@ -96,6 +133,18 @@ export function SettingsPanel() {
               <Input id="port" value={port} onChange={(e) => setPort(e.target.value)} />
               <Button onClick={applyPort}>Apply</Button>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="allow-get">Cho phép GET (link URL)</Label>
+              <p className="text-sm text-muted-foreground">
+                Bật để gọi API bằng URL trong trình duyệt, Stream Deck, shortcut…
+              </p>
+            </div>
+            <Switch id="allow-get" checked={allowGet} onCheckedChange={handleAllowGet} />
           </div>
 
           <Separator />
@@ -133,6 +182,11 @@ export function SettingsPanel() {
                   Regenerate
                 </Button>
               </div>
+              {allowGet && (
+                <p className="text-xs text-muted-foreground">
+                  Với GET, truyền token qua query: <code>?token=...</code>
+                </p>
+              )}
             </div>
           )}
 
@@ -152,10 +206,28 @@ export function SettingsPanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Ví dụ API (curl)</CardTitle>
+          <CardTitle>Ví dụ API</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 font-mono text-xs">
+          <p className="font-sans text-sm text-muted-foreground">GET — status</p>
           <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl http://127.0.0.1:${port}/status`}</pre>
+
+          {allowGet ? (
+            <>
+              <p className="font-sans text-sm text-muted-foreground">
+                GET — mở link URL trực tiếp (dán vào trình duyệt / Stream Deck)
+              </p>
+              <pre className="overflow-x-auto rounded-md bg-muted p-3">{openAppGetUrl}</pre>
+              <pre className="overflow-x-auto rounded-md bg-muted p-3">{openFileGetUrl}</pre>
+              <pre className="overflow-x-auto rounded-md bg-muted p-3">{execGetUrl}</pre>
+            </>
+          ) : (
+            <p className="font-sans text-sm text-muted-foreground">
+              GET đang tắt — bật &quot;Cho phép GET&quot; ở trên để dùng link URL.
+            </p>
+          )}
+
+          <p className="font-sans text-sm text-muted-foreground">POST — curl</p>
           <pre className="overflow-x-auto rounded-md bg-muted p-3">{`curl -X POST http://127.0.0.1:${port}/open-app \\
 ${authHeader(requireToken, token, showToken)}  -H "Content-Type: application/json" \\
   -d '{"app":"my-app"}'`}</pre>
