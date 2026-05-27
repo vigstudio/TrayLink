@@ -36,12 +36,8 @@ fn resolve_app_path(path: &str) -> Option<PathBuf> {
     let candidate = PathBuf::from(path);
 
     #[cfg(target_os = "windows")]
-    {
-        if crate::apps::is_lnk(&candidate) {
-            if let Some(target) = crate::apps::resolve_lnk_target(&candidate) {
-                return Some(target);
-            }
-        }
+    if crate::apps::is_lnk(&candidate) {
+        return None;
     }
 
     if candidate.exists() {

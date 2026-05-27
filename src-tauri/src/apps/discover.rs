@@ -168,11 +168,9 @@ fn collect_windows_shortcuts(dir: &Path, apps: &mut Vec<InstalledApp>) {
             .unwrap_or("Unknown")
             .to_string();
 
-        let launch_path = crate::apps::resolve_lnk_target(&path).unwrap_or(path);
-
         apps.push(InstalledApp {
             name,
-            path: launch_path.to_string_lossy().to_string(),
+            path: path.to_string_lossy().to_string(),
         });
     }
 }
