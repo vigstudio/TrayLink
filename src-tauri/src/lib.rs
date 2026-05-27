@@ -7,6 +7,7 @@ mod remote_icons;
 mod tls;
 mod state;
 mod tray;
+mod uploads;
 
 use std::sync::Arc;
 

@@ -11,6 +11,7 @@ use crate::apps::get_app_icon_png;
 use crate::config::{AppEntry, RemoteDeckLayout};
 use crate::remote_icons::{content_type_for_filename, load_custom_icon, slot_id};
 use crate::state::{SharedState, APP_VERSION};
+use crate::uploads::MAX_UPLOAD_BYTES;
 
 const REMOTE_HTML: &str = include_str!("../../assets/remote.html");
 const NOSLEEP_MP4: &[u8] = include_bytes!("../../assets/nosleep.mp4");
@@ -31,6 +32,8 @@ struct DeckResponse {
     version: &'static str,
     allow_get: bool,
     require_token: bool,
+    upload_enabled: bool,
+    max_upload_mb: u32,
     items: Vec<DeckItem>,
 }
 
@@ -93,6 +96,8 @@ async fn deck_api(State(state): State<SharedState>) -> Json<DeckResponse> {
         version: APP_VERSION,
         allow_get: config.allow_get,
         require_token: config.require_token,
+        upload_enabled: true,
+        max_upload_mb: (MAX_UPLOAD_BYTES / 1024 / 1024) as u32,
         items,
     })
 }

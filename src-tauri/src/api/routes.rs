@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use axum::extract::{Query, State};
+use axum::extract::{DefaultBodyLimit, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -14,6 +14,8 @@ use crate::api::auth::extract_token;
 use crate::api::client_ip::ClientIp;
 use crate::api::remote;
 use crate::api::server::{https_port, restart_server};
+use crate::api::upload;
+use crate::uploads::MAX_UPLOAD_BYTES;
 use crate::launcher::{exec_cmd, open_app, open_file, LauncherError};
 use crate::net;
 use crate::state::{LogEntry, SharedState, APP_VERSION};
@@ -76,10 +78,12 @@ struct SuccessResponse {
 pub fn build_router(state: SharedState) -> Router {
     Router::new()
         .merge(remote::routes())
+        .merge(upload::routes())
         .route("/status", get(status))
         .route("/open-app", get(open_app_get).post(open_app_post))
         .route("/open-file", get(open_file_get).post(open_file_post))
         .route("/exec", get(exec_get).post(exec_post))
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES as usize))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -425,7 +429,7 @@ fn error_response(
         .into_response()
 }
 
-fn log_request(
+pub(crate) fn log_request(
     state: &SharedState,
     method: &str,
     path: &str,

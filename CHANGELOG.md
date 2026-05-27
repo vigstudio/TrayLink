@@ -5,6 +5,20 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13] - 2026-05-28
+
+### Added
+
+- **Upload file từ điện thoại lên PC** qua Remote Deck — nút upload (góc trái), chọn ảnh/video/tài liệu, thanh tiến trình
+- API `POST /api/upload` (multipart, field `file`; tùy chọn `open=1` để mở file sau khi lưu)
+- File lưu vào `Downloads/TrayLink` trên máy tính; giới hạn **5 GB**/file
+- Hỗ trợ ảnh, video, audio, PDF, Office, zip và nhiều định dạng phổ biến khác
+- `GET /api/deck` trả thêm `upload_enabled`, `max_upload_mb` cho giao diện mobile
+
+### Changed
+
+- README: hướng dẫn upload từ Remote Deck và ví dụ `curl`
+
 ## [0.1.12] - 2026-05-26
 
 ### Fixed
@@ -131,6 +145,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.13]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.13
 [0.1.12]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.12
 [0.1.11]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.11
 [0.1.10]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.10

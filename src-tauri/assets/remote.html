@@ -43,7 +43,7 @@
     }
 
     .header {
-      padding: 16px 64px 8px 20px;
+      padding: 16px 64px 8px 56px;
       text-align: center;
     }
 
@@ -284,6 +284,116 @@
       z-index: 150;
     }
 
+    .toolbar-left {
+      position: fixed;
+      top: calc(10px + env(safe-area-inset-top));
+      left: calc(10px + env(safe-area-inset-left));
+      display: flex;
+      gap: 8px;
+      z-index: 150;
+    }
+
+    .upload-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 24px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      z-index: 250;
+    }
+
+    .upload-overlay.hidden { display: none; }
+
+    .upload-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .upload-panel h2 {
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .upload-panel p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .upload-file-info {
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      word-break: break-all;
+    }
+
+    .upload-progress {
+      height: 6px;
+      background: var(--bg);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .upload-progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.15s ease;
+    }
+
+    .upload-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .upload-actions button {
+      flex: 1;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-upload {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-upload:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-cancel {
+      background: var(--tile);
+      color: var(--text);
+      border: 1px solid var(--border) !important;
+    }
+
+    .upload-options {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .upload-options input { accent-color: var(--accent); }
+
+    #file-input { display: none; }
+
     .toolbar-btn {
       width: 42px;
       height: 42px;
@@ -360,6 +470,35 @@
   </style>
 </head>
 <body>
+  <div class="toolbar-left">
+    <button type="button" class="toolbar-btn" id="btn-upload" title="Upload file lên PC" aria-label="Upload file lên PC">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </button>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,.rar,.7z" multiple />
+
+  <div id="upload-overlay" class="upload-overlay hidden">
+    <div class="upload-panel">
+      <h2>Upload lên PC</h2>
+      <p>Ảnh, video, tài liệu sẽ được lưu vào thư mục Downloads/TrayLink trên máy tính.</p>
+      <div id="upload-file-info" class="upload-file-info"></div>
+      <div class="upload-progress"><div id="upload-progress-bar" class="upload-progress-bar"></div></div>
+      <label class="upload-options">
+        <input type="checkbox" id="upload-open-after" checked />
+        Mở file sau khi upload
+      </label>
+      <div class="upload-actions">
+        <button type="button" class="btn-cancel" id="upload-cancel">Hủy</button>
+        <button type="button" class="btn-upload" id="upload-start" disabled>Bắt đầu</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toolbar" id="toolbar">
     <button type="button" class="toolbar-btn" id="btn-fullscreen" title="Toàn màn hình" aria-label="Toàn màn hình">
       <svg class="icon-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -407,6 +546,17 @@
     const tokenSubmit = document.getElementById("token-submit");
     const btnFullscreen = document.getElementById("btn-fullscreen");
     const btnKeepAwake = document.getElementById("btn-keep-awake");
+    const btnUpload = document.getElementById("btn-upload");
+    const fileInput = document.getElementById("file-input");
+    const uploadOverlay = document.getElementById("upload-overlay");
+    const uploadFileInfo = document.getElementById("upload-file-info");
+    const uploadProgressBar = document.getElementById("upload-progress-bar");
+    const uploadStart = document.getElementById("upload-start");
+    const uploadCancel = document.getElementById("upload-cancel");
+    const uploadOpenAfter = document.getElementById("upload-open-after");
+
+    let pendingFiles = [];
+    let uploading = false;
 
     let screenWakeLock = null;
     let keepAwakeEnabled = localStorage.getItem("traylink_keep_awake") === "1";
@@ -701,6 +851,131 @@
       await setKeepAwake(!keepAwakeEnabled);
     }
 
+    function authHeaders() {
+      const headers = {};
+      if (token) headers["Authorization"] = "Bearer " + token;
+      return headers;
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    function showUploadPanel(files) {
+      pendingFiles = Array.from(files);
+      if (pendingFiles.length === 0) return;
+
+      const maxMb = deckData?.max_upload_mb || 5120;
+      const lines = pendingFiles.map((f) => {
+        const tooBig = f.size > maxMb * 1024 * 1024;
+        return `${f.name} (${formatSize(f.size)})${tooBig ? " — quá lớn!" : ""}`;
+      });
+      uploadFileInfo.textContent = lines.join("\n");
+      uploadProgressBar.style.width = "0%";
+      uploadStart.disabled = pendingFiles.some((f) => f.size > maxMb * 1024 * 1024);
+      uploadOverlay.classList.remove("hidden");
+    }
+
+    function hideUploadPanel() {
+      if (uploading) return;
+      uploadOverlay.classList.add("hidden");
+      pendingFiles = [];
+      fileInput.value = "";
+    }
+
+    function uploadOne(file, openAfter) {
+      return new Promise((resolve, reject) => {
+        const form = new FormData();
+        form.append("file", file, file.name);
+        form.append("open", openAfter ? "1" : "0");
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/upload");
+        const headers = authHeaders();
+        for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            uploadProgressBar.style.width = pct + "%";
+          }
+        };
+
+        xhr.onload = () => {
+          let data = {};
+          try { data = JSON.parse(xhr.responseText); } catch {}
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(data.error || `Lỗi ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Lỗi mạng khi upload"));
+        xhr.send(form);
+      });
+    }
+
+    async function startUpload() {
+      if (uploading || pendingFiles.length === 0) return;
+      uploading = true;
+      uploadStart.disabled = true;
+      uploadCancel.disabled = true;
+
+      const openAfter = uploadOpenAfter.checked;
+      const total = pendingFiles.length;
+      let done = 0;
+
+      try {
+        for (const file of pendingFiles) {
+          uploadFileInfo.textContent = `Đang upload (${done + 1}/${total}): ${file.name}`;
+          uploadProgressBar.style.width = "0%";
+          const data = await uploadOne(file, openAfter);
+          done++;
+          showToast(data.message || `Đã upload ${file.name}`, "success");
+          vibrate(40);
+        }
+        hideUploadPanel();
+      } catch (err) {
+        showToast(String(err.message || err), "error");
+        vibrate([30, 50, 30]);
+      } finally {
+        uploading = false;
+        uploadStart.disabled = false;
+        uploadCancel.disabled = false;
+        uploadOverlay.classList.add("hidden");
+        pendingFiles = [];
+        fileInput.value = "";
+      }
+    }
+
+    function setupUpload() {
+      if (deckData && deckData.upload_enabled === false) {
+        btnUpload.style.display = "none";
+        return;
+      }
+
+      btnUpload.addEventListener("click", () => {
+        if (deckData?.require_token && !token) {
+          tokenOverlay.classList.remove("hidden");
+          showToast("Nhập token trước khi upload", "error");
+          return;
+        }
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files?.length) showUploadPanel(fileInput.files);
+      });
+
+      uploadStart.addEventListener("click", startUpload);
+      uploadCancel.addEventListener("click", hideUploadPanel);
+      uploadOverlay.addEventListener("click", (e) => {
+        if (e.target === uploadOverlay && !uploading) hideUploadPanel();
+      });
+    }
+
     function setupToolbar() {
       btnFullscreen.addEventListener("click", () => {
         toggleFullscreen();
@@ -911,6 +1186,7 @@
             sessionStorage.setItem("traylink_token", token);
             tokenOverlay.classList.add("hidden");
             render(deckData);
+            setupUpload();
           };
           tokenInput.addEventListener("keydown", e => {
             if (e.key === "Enter") tokenSubmit.click();
@@ -919,6 +1195,7 @@
         }
 
         render(deckData);
+        setupUpload();
         if (keepAwakeEnabled) {
           renewKeepAwake().then(updateKeepAwakeButton);
         }
