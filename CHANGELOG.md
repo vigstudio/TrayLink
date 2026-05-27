@@ -5,6 +5,17 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-05-26
+
+### Fixed
+
+- Windows: mở **Chọn app** không còn PowerShell loop (bỏ resolve/icon hàng loạt; chỉ resolve `.lnk` → `.exe` khi chọn một app)
+- Windows: vẫn mở app đúng sau khi chọn (path `.exe` lưu vào config)
+
+### Changed
+
+- CI: workflow **Build Release** chỉ chạy khi push tag `v*` (không build trùng mỗi lần push `main`)
+
 ## [0.1.11] - 2026-05-26
 
 ### Fixed
@@ -120,6 +131,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.12]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.12
 [0.1.11]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.11
 [0.1.10]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.10
 [0.1.9]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.9
