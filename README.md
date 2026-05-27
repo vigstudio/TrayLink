@@ -124,7 +124,7 @@ curl -X POST http://192.168.1.x:8765/open-app \
 
 Thay `192.168.1.x` bằng **IP LAN** hiển thị trong Dashboard → **Overview** hoặc modal **API**.
 
-### Video — Loa AI văn phòng - Đồng hồ Ai mở ứng dụng mở qua API
+### Video — Loa AI văn phòng - Đồng hồ Ai mở ứng dụng thông qua API
 
 ![Hướng dẫn sử dụng — đồng hồ AI mở ứng dụng qua TrayLink](docs/cach-su-dung.gif)
 
