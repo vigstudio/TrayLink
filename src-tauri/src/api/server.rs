@@ -71,7 +71,7 @@ async fn start_https_server(
     let http_port = state.config.read().unwrap().port;
     let https_port = https_port(http_port);
     let lan_ip = net::get_lan_ip();
-    let materials = match tls::create_tls_materials(lan_ip.as_deref()) {
+    let materials = match tls::load_or_create_tls_materials(app, lan_ip.as_deref()) {
         Ok(m) => m,
         Err(err) => {
             eprintln!("HTTPS cert error: {err}");

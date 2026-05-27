@@ -51,6 +51,42 @@ TrayLink chạy HTTPS trên port **8766** (HTTP + 1) với chứng chỉ **tự 
 
 3. Sau khi vào được trang Remote → bật nút **mặt trời** (góc phải) để giữ màn hình sáng
 
+### Fullscreen trên iPhone (Safari + PWA)
+
+Safari trên iPhone **không hỗ trợ** Fullscreen API trong tab thường — thanh địa chỉ và thanh công cụ Safari vẫn hiện khi bấm nút toàn màn hình trong trang. Cách tốt nhất là **cài PWA** (Thêm vào Màn hình chính) rồi mở từ icon trên Home Screen.
+
+**Bước 1 — Mở bằng HTTPS**
+
+1. Copy link **Remote Deck — HTTPS** từ Dashboard (vd `https://192.168.1.x:8766/remote`)
+2. Mở link trong **Safari** (không dùng Chrome/Facebook in-app browser nếu có thể)
+3. [Chấp nhận chứng chỉ tự ký](#vượt-cảnh-báo-https-chứng-chỉ-tự-ký) lần đầu
+
+**Bước 2 — Thêm vào Màn hình chính**
+
+1. Chạm nút **Chia sẻ** (hình vuông có mũi tên lên) trên thanh Safari
+2. Cuộn xuống → chọn **Thêm vào Màn hình chính** (*Add to Home Screen*)
+3. (Tuỳ chọn) Đổi tên thành `TrayLink` → chạm **Thêm**
+
+Hoặc trên trang Remote: chạm nút **Thêm shortcut** (vuông `+`, góc trái) — app sẽ nhắc thao tác tương tự.
+
+**Bước 3 — Mở từ Home Screen (fullscreen thật)**
+
+1. Thoát Safari, mở app **TrayLink** từ icon vừa thêm
+2. App chạy **standalone** — không còn thanh Safari, giống app native
+3. Chạm nút **mặt trời** để giữ màn hình sáng
+4. (Tuỳ chọn) Chạm nút **toàn màn hình** (góc phải) để ẩn header, grid chiếm gần hết màn hình
+
+**Mẹo iPhone**
+
+| Mục tiêu | Cách làm |
+|----------|----------|
+| Ẩn thanh Safari | Mở từ **Home Screen**, không mở link trong tab Safari |
+| Giữ màn hình sáng | Bắt buộc HTTPS + bật nút mặt trời; tắt **Tiết kiệm pin** |
+| Không nhập lại token | Dùng link HTTPS có `?token=...` từ Dashboard; token được nhớ sau lần đầu |
+| Treo tường làm bảng điều khiển | Cài PWA + bật giữ sáng + chế độ toàn màn hình trong app |
+
+📖 Chi tiết thêm: [docs/allow-https/README.md — Fullscreen iPhone](docs/allow-https/README.md#fullscreen-trên-iphone-safari--pwa)
+
 | | HTTP `:8765` | HTTPS `:8766` |
 |---|-------------|---------------|
 | Mở app từ điện thoại | Có | Có |

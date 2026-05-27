@@ -5,6 +5,27 @@ Tất cả thay đổi đáng chú ý của dự án TrayLink được ghi tại
 Format dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14] - 2026-05-28
+
+### Added
+
+- **PWA Remote Deck** — `manifest.webmanifest`, service worker, icon 180/192/512; cài shortcut trên iPhone/Android qua HTTPS
+- Nút **Thêm shortcut** (góc trái, mobile) — hướng dẫn cài PWA / Thêm vào Màn hình chính
+- Token Remote lưu `localStorage` + đồng bộ `?token=` trên URL; nhớ ưu tiên HTTPS sau lần mở đầu
+- Chứng chỉ TLS **lưu trên disk** — tái sử dụng qua các lần restart (chỉ tạo mới khi IP LAN đổi)
+- Hướng dẫn **fullscreen trên iPhone (Safari + PWA)** — [docs/allow-https/README.md](docs/allow-https/README.md#fullscreen-trên-iphone-safari--pwa)
+
+### Changed
+
+- Header Remote căn giữa màn hình, cùng hàng với toolbar
+- Toolbar trái: nút **Upload** đứng trước **Thêm shortcut**; icon shortcut dạng vuông `+`
+- Ẩn nút **Thêm shortcut** khi bật toàn màn hình (immersive / native fullscreen)
+
+### Fixed
+
+- F5 / refresh không mất token khi chuyển HTTP → HTTPS
+- Không cần chấp nhận lại chứng chỉ HTTPS sau mỗi lần restart TrayLink (cùng IP LAN)
+
 ## [0.1.13] - 2026-05-28
 
 ### Added
@@ -145,6 +166,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.14]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.14
 [0.1.13]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.13
 [0.1.12]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.12
 [0.1.11]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.11

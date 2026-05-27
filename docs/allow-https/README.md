@@ -66,6 +66,56 @@ Sau khi chấp nhận một lần, trình duyệt thường nhớ cho cùng IP/p
 
 Nếu bạn mở bằng HTTP mà bật giữ sáng, app có thể **tự chuyển** sang HTTPS (nếu server HTTPS đang chạy).
 
+## Fullscreen trên iPhone (Safari + PWA)
+
+Safari trên iPhone **không hỗ trợ** Fullscreen API trong tab thường. Nút **toàn màn hình** trong Remote chỉ ẩn thêm header (chế độ immersive) — **thanh Safari vẫn còn** nếu bạn mở link trong tab.
+
+Để có trải nghiệm **fullscreen thật** (không thanh địa chỉ, không thanh công cụ Safari), hãy **cài PWA** — Thêm vào Màn hình chính — rồi mở từ icon Home Screen.
+
+### Chuẩn bị
+
+1. Dùng link **HTTPS** từ Dashboard (vd `https://192.168.1.x:8766/remote`)
+2. Mở trong **Safari** trên iPhone (cùng Wi‑Fi với PC)
+3. [Chấp nhận chứng chỉ](#chấp-nhận-chứng-chỉ-tự-ký-lần-đầu) lần đầu
+4. Nếu bật API token: dùng link có `?token=...` (Dashboard copy sẵn)
+
+### Cài PWA — Thêm vào Màn hình chính
+
+**Cách 1 — Safari Share**
+
+1. Trên trang Remote, chạm **Chia sẻ** (biểu tượng vuông, mũi tên lên) ở thanh dưới Safari
+2. Cuộn menu → chọn **Thêm vào Màn hình chính** (*Add to Home Screen*)
+3. Chạm **Thêm**
+
+**Cách 2 — Nút trong Remote**
+
+1. Chạm nút **Thêm shortcut** (vuông `+`, góc trái trên trang Remote)
+2. Làm theo hướng dẫn toast: **Chia sẻ → Thêm vào Màn hình chính**
+
+### Dùng như app fullscreen
+
+1. Về **Home Screen**, mở icon **TrayLink** vừa thêm
+2. App mở ở chế độ **standalone** — toàn màn hình, không còn UI Safari
+3. Chạm nút **mặt trời** (góc phải) để giữ màn hình sáng
+4. Chạm nút **toàn màn hình** (góc phải) để ẩn tiêu đề, grid rộng hơn
+5. Nút **Thêm shortcut** tự ẩn khi đang fullscreen — tránh chiếm chỗ trên bảng điều khiển
+
+### So sánh
+
+| Cách mở | Thanh Safari | Giữ màn hình sáng | Khuyến nghị |
+|---------|--------------|-------------------|-------------|
+| Tab Safari (`https://...`) | Có | Có (HTTPS) | Dùng thử nhanh |
+| Home Screen (PWA) | Không | Có (HTTPS) | **Treo tường / bảng điều khiển** |
+
+### Xử lý sự cố (iPhone)
+
+| Triệu chứng | Gợi ý |
+|-------------|--------|
+| Không thấy **Thêm vào Màn hình chính** | Chỉ có trên Safari; mở link HTTPS trong Safari, không dùng in-app browser |
+| Bấm toàn màn hình vẫn thấy thanh Safari | Bình thường trong tab — cài PWA và mở từ Home Screen |
+| Màn hình vẫn tắt nhanh | Tắt **Tiết kiệm pin**; bật nút mặt trời; mở từ PWA đã cài |
+| F5 / mở lại hỏi token hoặc HTTPS | Bookmark link HTTPS có `?token=...`; chấp nhận cert một lần — cert được lưu qua restart |
+
 ## HTTP vs HTTPS — tóm tắt
 
 | | HTTP `:8765` | HTTPS `:8766` |
@@ -83,6 +133,7 @@ Nếu bạn mở bằng HTTP mà bật giữ sáng, app có thể **tự chuyể
 | Không mở được `https://...:8766` | Kiểm tra PC và điện thoại cùng Wi‑Fi; Restart Server trong Dashboard; firewall cho phép port 8766 |
 | Vẫn báo chứng chỉ sau khi Allow | Xóa cache trang / thử tab ẩn danh rồi Allow lại |
 | Nút mặt trời bật nhưng màn hình vẫn tắt | Đảm bảo URL bắt đầu bằng `https://`; tắt Tiết kiệm pin; bật toàn màn hình |
+| Bấm toàn màn hình vẫn thấy thanh Safari (iPhone) | Cài [PWA — Thêm vào Màn hình chính](#fullscreen-trên-iphone-safari--pwa), mở từ Home Screen |
 | Chỉ cần mở app, không cần giữ sáng | Có thể dùng link HTTP `:8765` |
 
 ## Liên quan

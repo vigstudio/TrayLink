@@ -1,0 +1,32 @@
+{
+  "id": "/remote",
+  "name": "TrayLink Remote",
+  "short_name": "TrayLink",
+  "description": "Điều khiển app trên PC từ điện thoại",
+  "start_url": "/remote",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0f12",
+  "theme_color": "#0f0f12",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/api/pwa/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

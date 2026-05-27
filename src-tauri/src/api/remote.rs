@@ -15,6 +15,11 @@ use crate::uploads::MAX_UPLOAD_BYTES;
 
 const REMOTE_HTML: &str = include_str!("../../assets/remote.html");
 const NOSLEEP_MP4: &[u8] = include_bytes!("../../assets/nosleep.mp4");
+const PWA_MANIFEST: &str = include_str!("../../assets/manifest.webmanifest");
+const PWA_SW: &str = include_str!("../../assets/sw.js");
+const PWA_ICON_180: &[u8] = include_bytes!("../../assets/pwa-icon-180.png");
+const PWA_ICON_192: &[u8] = include_bytes!("../../assets/pwa-icon-192.png");
+const PWA_ICON_512: &[u8] = include_bytes!("../../assets/pwa-icon-512.png");
 
 #[derive(Serialize)]
 struct DeckItem {
@@ -41,10 +46,65 @@ pub fn routes() -> axum::Router<SharedState> {
     axum::Router::new()
         .route("/", get(remote_page))
         .route("/remote", get(remote_page))
+        .route("/manifest.webmanifest", get(pwa_manifest))
+        .route("/sw.js", get(pwa_service_worker))
+        .route("/api/pwa/icon-180.png", get(pwa_icon_180))
+        .route("/api/pwa/icon-192.png", get(pwa_icon_192))
+        .route("/api/pwa/icon-512.png", get(pwa_icon_512))
         .route("/api/deck", get(deck_api))
         .route("/api/icons/{kind}/{key}", get(deck_icon))
         .route("/api/icons/{key}", get(legacy_app_icon))
         .route("/api/nosleep.mp4", get(nosleep_video))
+}
+
+async fn pwa_manifest() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "application/manifest+json"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        PWA_MANIFEST,
+    )
+}
+
+async fn pwa_service_worker() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "application/javascript; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-cache"),
+        ],
+        PWA_SW,
+    )
+}
+
+async fn pwa_icon_180() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        PWA_ICON_180,
+    )
+}
+
+async fn pwa_icon_192() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        PWA_ICON_192,
+    )
+}
+
+async fn pwa_icon_512() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        PWA_ICON_512,
+    )
 }
 
 async fn nosleep_video() -> impl IntoResponse {

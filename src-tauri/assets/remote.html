@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TrayLink" />
   <meta name="theme-color" content="#0f0f12" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/api/pwa/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/api/pwa/icon-180.png" />
+  <link rel="apple-touch-icon" href="/api/pwa/icon-180.png" />
   <title>TrayLink Remote</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,20 +48,31 @@
     }
 
     .header {
-      padding: 16px 64px 8px 56px;
+      position: fixed;
+      top: calc(10px + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 140;
       text-align: center;
+      padding: 0;
+      pointer-events: none;
+      width: max-content;
+      max-width: calc(100vw - 120px - env(safe-area-inset-left) - env(safe-area-inset-right));
     }
 
     .header h1 {
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
       letter-spacing: -0.02em;
+      line-height: 42px;
+      white-space: nowrap;
     }
 
     .header p {
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       color: var(--muted);
-      margin-top: 4px;
+      margin-top: -6px;
+      line-height: 1;
     }
 
     .status-dot {
@@ -88,7 +104,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(var(--tile-size), 1fr));
       gap: var(--gap);
-      padding: 0 20px 24px;
+      padding: 58px 20px 24px;
     }
 
     .tile {
@@ -160,7 +176,7 @@
 
     .empty {
       text-align: center;
-      padding: 48px 24px;
+      padding: 100px 24px 48px;
       color: var(--muted);
       font-size: 0.875rem;
       line-height: 1.6;
@@ -427,6 +443,10 @@
       height: 20px;
     }
 
+    .toolbar-btn.hidden {
+      display: none;
+    }
+
     html:fullscreen,
     html:-webkit-full-screen {
       background: var(--bg);
@@ -441,6 +461,12 @@
     }
 
     body.immersive #app .header {
+      display: none;
+    }
+
+    body.immersive #btn-install,
+    html:fullscreen #btn-install,
+    html:-webkit-full-screen #btn-install {
       display: none;
     }
 
@@ -476,6 +502,13 @@
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="17 8 12 3 7 8"/>
         <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </button>
+    <button type="button" class="toolbar-btn hidden" id="btn-install" title="Thêm shortcut" aria-label="Thêm shortcut TrayLink Remote">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="3"/>
+        <path d="M12 8v8"/>
+        <path d="M8 12h8"/>
       </svg>
     </button>
   </div>
@@ -535,8 +568,55 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    let token = params.get("token") || sessionStorage.getItem("traylink_token") || "";
+    function loadToken() {
+      const fromUrl = new URLSearchParams(location.search).get("token");
+      if (fromUrl) {
+        localStorage.setItem("traylink_token", fromUrl);
+        return fromUrl;
+      }
+      return localStorage.getItem("traylink_token")
+        || sessionStorage.getItem("traylink_token")
+        || "";
+    }
+
+    function persistToken(value) {
+      token = value.trim();
+      if (!token) return;
+      localStorage.setItem("traylink_token", token);
+      sessionStorage.setItem("traylink_token", token);
+      const url = new URL(location.href);
+      url.searchParams.set("token", token);
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
+
+    function remoteQueryString() {
+      const qs = new URLSearchParams(location.search);
+      if (token && !qs.has("token")) qs.set("token", token);
+      const s = qs.toString();
+      return s ? `?${s}` : "";
+    }
+
+    function markHttpsPreferred() {
+      localStorage.setItem("traylink_prefer_https", "1");
+    }
+
+    function maybeRedirectToHttps() {
+      if (location.protocol === "https:") {
+        markHttpsPreferred();
+        return false;
+      }
+      const httpsUrl = httpsRemoteUrl();
+      if (!httpsUrl) return false;
+      const preferHttps = localStorage.getItem("traylink_prefer_https") === "1" || keepAwakeEnabled;
+      if (preferHttps) {
+        location.replace(httpsUrl);
+        return true;
+      }
+      return false;
+    }
+
+    let token = loadToken();
+    if (token) persistToken(token);
     let deckData = null;
 
     const toastEl = document.getElementById("toast");
@@ -546,6 +626,7 @@
     const tokenSubmit = document.getElementById("token-submit");
     const btnFullscreen = document.getElementById("btn-fullscreen");
     const btnKeepAwake = document.getElementById("btn-keep-awake");
+    const btnInstall = document.getElementById("btn-install");
     const btnUpload = document.getElementById("btn-upload");
     const fileInput = document.getElementById("file-input");
     const uploadOverlay = document.getElementById("upload-overlay");
@@ -564,6 +645,7 @@
     let keepAwakeMonitor = null;
     let serverStatus = null;
     let immersiveMode = false;
+    let deferredInstallPrompt = null;
 
     const wakeLockApiAvailable =
       window.isSecureContext && "wakeLock" in navigator && "request" in navigator.wakeLock;
@@ -573,22 +655,123 @@
         || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     }
 
+    function isAndroid() {
+      return /Android/i.test(navigator.userAgent);
+    }
+
     function isMobile() {
-      return isIOS() || /Android/i.test(navigator.userAgent);
+      return isIOS() || isAndroid();
+    }
+
+    function isPwaInstalled() {
+      if (window.matchMedia("(display-mode: standalone)").matches) return true;
+      if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
+      if (window.navigator.standalone === true) return true;
+      if (document.referrer.startsWith("android-app://")) return true;
+      return false;
+    }
+
+    function canShowInstallButton() {
+      if (isPwaInstalled()) return false;
+      if (!isMobile()) return false;
+      return true;
+    }
+
+    function updateInstallButton() {
+      btnInstall.classList.toggle("hidden", !canShowInstallButton() || isExpandedView());
+      if (deferredInstallPrompt) {
+        btnInstall.title = "Thêm shortcut TrayLink Remote";
+      } else if (!window.isSecureContext) {
+        btnInstall.title = "Thêm shortcut — cần mở bằng HTTPS";
+      } else if (isAndroid()) {
+        btnInstall.title = "Thêm shortcut — Menu Chrome hoặc cài trực tiếp";
+      } else {
+        btnInstall.title = "Thêm vào Màn hình chính";
+      }
+    }
+
+    async function registerServiceWorker() {
+      if (!("serviceWorker" in navigator) || !window.isSecureContext) return false;
+      try {
+        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    async function promptPwaInstall() {
+      if (isPwaInstalled()) {
+        updateInstallButton();
+        return;
+      }
+
+      if (!window.isSecureContext) {
+        const httpsUrl = httpsRemoteUrl();
+        if (httpsUrl) {
+          showToast("Cài app cần HTTPS — đang chuyển...", "success");
+          window.setTimeout(() => location.replace(httpsUrl), 900);
+        } else {
+          showToast("Mở link HTTPS Remote Deck trên Dashboard để cài app", "error");
+        }
+        return;
+      }
+
+      await registerServiceWorker();
+
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        updateInstallButton();
+        if (choice.outcome === "accepted") {
+          showToast("Đã cài TrayLink Remote", "success");
+        }
+        return;
+      }
+
+      if (isAndroid()) {
+        showToast("Chrome: Menu ⋮ → Cài ứng dụng (hoặc Thêm vào Màn hình chính)", "success");
+      } else if (isIOS()) {
+        showToast("Safari: Chia sẻ → Thêm vào Màn hình chính", "success");
+      }
+    }
+
+    function setupPwaInstall() {
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        updateInstallButton();
+      });
+
+      window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = null;
+        updateInstallButton();
+        showToast("Đã cài TrayLink Remote", "success");
+      });
+
+      window.matchMedia("(display-mode: standalone)").addEventListener("change", updateInstallButton);
+
+      btnInstall.addEventListener("click", () => {
+        promptPwaInstall();
+      });
+
+      registerServiceWorker().then(updateInstallButton);
+      updateInstallButton();
     }
 
     function httpsRemoteUrl() {
       if (!serverStatus?.https_port) return null;
       const host = location.hostname || "127.0.0.1";
-      const qs = location.search || "";
-      return `https://${host}:${serverStatus.https_port}/remote${qs}`;
+      return `https://${host}:${serverStatus.https_port}/remote${remoteQueryString()}`;
     }
 
     function showToast(msg, type = "success") {
       toastEl.textContent = msg;
       toastEl.className = "toast show " + type;
       clearTimeout(showToast._t);
-      showToast._t = setTimeout(() => { toastEl.className = "toast"; }, 2200);
+      const duration = msg.length > 40 ? 4200 : 2200;
+      showToast._t = setTimeout(() => { toastEl.className = "toast"; }, duration);
     }
 
     function vibrate(ms = 30) {
@@ -605,6 +788,7 @@
 
     function updateFullscreenButton() {
       btnFullscreen.classList.toggle("active", isExpandedView());
+      updateInstallButton();
     }
 
     function enterImmersiveMode() {
@@ -1133,7 +1317,6 @@
         appEl.innerHTML = `
           <div class="header">
             <h1><span class="status-dot"></span>TrayLink Remote</h1>
-            <p>v${deck.version || "?"}</p>
           </div>
           <div class="empty">Chưa có app hoặc lệnh nào.<br/>Thêm trong Dashboard → Apps & Commands.</div>`;
         return;
@@ -1142,7 +1325,6 @@
       appEl.innerHTML = `
         <div class="header">
           <h1><span class="status-dot"></span>TrayLink Remote</h1>
-          <p>Chạm để mở app trên PC · v${deck.version || "?"}</p>
         </div>
         <div class="grid">${deckItems.map((item) => renderTile(item)).join("")}</div>`;
 
@@ -1167,23 +1349,17 @@
     async function init() {
       try {
         await fetchServerStatus();
+        updateInstallButton();
 
-        if (keepAwakeEnabled && !wakeLockApiAvailable) {
-          const httpsUrl = httpsRemoteUrl();
-          if (httpsUrl && location.protocol !== "https:") {
-            location.replace(httpsUrl);
-            return;
-          }
-        }
+        if (maybeRedirectToHttps()) return;
 
         deckData = await fetchDeck();
 
         if (deckData.require_token && !token) {
           tokenOverlay.classList.remove("hidden");
           tokenSubmit.onclick = () => {
-            token = tokenInput.value.trim();
+            persistToken(tokenInput.value);
             if (!token) return;
-            sessionStorage.setItem("traylink_token", token);
             tokenOverlay.classList.add("hidden");
             render(deckData);
             setupUpload();
@@ -1194,6 +1370,7 @@
           return;
         }
 
+        if (location.protocol === "https:") markHttpsPreferred();
         render(deckData);
         setupUpload();
         if (keepAwakeEnabled) {
@@ -1209,6 +1386,7 @@
     }
 
     setupToolbar();
+    setupPwaInstall();
     init();
   </script>
 </body>
