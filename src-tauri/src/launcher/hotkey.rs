@@ -87,15 +87,21 @@ fn activate_app(path: &str) -> Result<(), LauncherError> {
             fn SetForegroundWindow(hWnd: HWND) -> BOOL;
             fn IsIconic(hWnd: HWND) -> BOOL;
             fn GetLastActivePopup(hWnd: HWND) -> HWND;
+            fn GetForegroundWindow() -> HWND;
+            fn GetCurrentThreadId() -> DWORD;
+            fn AttachThreadInput(idAttach: DWORD, idAttachTo: DWORD, fAttach: BOOL) -> BOOL;
+            fn SetActiveWindow(hWnd: HWND) -> HWND;
+            fn SetFocus(hWnd: HWND) -> HWND;
+            fn BringWindowToTop(hWnd: HWND) -> BOOL;
         }
 
         let launch_path = crate::apps::resolve_launch_path(path);
-        let target_exe = launch_path
-            .file_name()
+        let target_stem = launch_path
+            .file_stem()
             .and_then(|n| n.to_str())
             .map(|s| s.to_lowercase());
 
-        if let Some(target) = target_exe {
+        if let Some(target) = target_stem {
             unsafe {
                 let mut pids = Vec::new();
                 let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -117,7 +123,13 @@ fn activate_app(path: &str) -> Result<(), LauncherError> {
                         loop {
                             let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(260);
                             let exe_name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
-                            if exe_name == target {
+                            let exe_path = Path::new(&exe_name);
+                            let exe_stem = exe_path
+                                .file_stem()
+                                .and_then(|n| n.to_str())
+                                .map(|s| s.to_lowercase());
+
+                            if exe_stem == Some(target.clone()) {
                                 pids.push(entry.th32ProcessID);
                             }
                             if Process32NextW(snapshot, &mut entry) == 0 {
@@ -158,12 +170,29 @@ fn activate_app(path: &str) -> Result<(), LauncherError> {
                         let last_active = GetLastActivePopup(hwnd);
                         let target_hwnd = if IsWindowVisible(last_active) != 0 { last_active } else { hwnd };
 
+                        let foreground_hwnd = GetForegroundWindow();
+                        let foreground_thread = GetWindowThreadProcessId(foreground_hwnd, std::ptr::null_mut());
+                        let current_thread = GetCurrentThreadId();
+
+                        if foreground_thread != 0 && current_thread != foreground_thread {
+                            AttachThreadInput(current_thread, foreground_thread, 1);
+                        }
+
                         if IsIconic(target_hwnd) != 0 {
                             ShowWindow(target_hwnd, SW_RESTORE);
                         } else {
                             ShowWindow(target_hwnd, SW_SHOW);
                         }
+
+                        BringWindowToTop(target_hwnd);
                         SetForegroundWindow(target_hwnd);
+                        SetActiveWindow(target_hwnd);
+                        SetFocus(target_hwnd);
+
+                        if foreground_thread != 0 && current_thread != foreground_thread {
+                            AttachThreadInput(current_thread, foreground_thread, 0);
+                        }
+
                         return Ok(());
                     }
                 }
