@@ -47,8 +47,129 @@ fn activate_app(path: &str) -> Result<(), LauncherError> {
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
+        use std::path::Path;
+        use std::ffi::c_void;
+
+        type HWND = *mut c_void;
+        type BOOL = i32;
+        type DWORD = u32;
+        type HANDLE = *mut c_void;
+        type LPARAM = isize;
+
+        const TH32CS_SNAPPROCESS: DWORD = 0x00000002;
+        const INVALID_HANDLE_VALUE: HANDLE = -1isize as HANDLE;
+        const SW_RESTORE: i32 = 9;
+        const SW_SHOW: i32 = 5;
+
+        #[repr(C)]
+        struct PROCESSENTRY32W {
+            dwSize: DWORD,
+            cntUsage: DWORD,
+            th32ProcessID: DWORD,
+            th32DefaultHeapID: usize,
+            th32ModuleID: DWORD,
+            cntThreads: DWORD,
+            th32ParentProcessID: DWORD,
+            pcPriClassBase: i32,
+            dwFlags: DWORD,
+            szExeFile: [u16; 260],
+        }
+
+        unsafe extern "system" {
+            fn CreateToolhelp32Snapshot(dwFlags: DWORD, th32ProcessID: DWORD) -> HANDLE;
+            fn Process32FirstW(hSnapshot: HANDLE, lppe: *mut PROCESSENTRY32W) -> BOOL;
+            fn Process32NextW(hSnapshot: HANDLE, lppe: *mut PROCESSENTRY32W) -> BOOL;
+            fn CloseHandle(hObject: HANDLE) -> BOOL;
+            fn EnumWindows(lpEnumFunc: unsafe extern "system" fn(HWND, LPARAM) -> BOOL, lParam: LPARAM) -> BOOL;
+            fn GetWindowThreadProcessId(hWnd: HWND, lpdwProcessId: *mut DWORD) -> DWORD;
+            fn IsWindowVisible(hWnd: HWND) -> BOOL;
+            fn ShowWindow(hWnd: HWND, nCmdShow: i32) -> BOOL;
+            fn SetForegroundWindow(hWnd: HWND) -> BOOL;
+            fn IsIconic(hWnd: HWND) -> BOOL;
+            fn GetLastActivePopup(hWnd: HWND) -> HWND;
+        }
 
         let launch_path = crate::apps::resolve_launch_path(path);
+        let target_exe = launch_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_lowercase());
+
+        if let Some(target) = target_exe {
+            unsafe {
+                let mut pids = Vec::new();
+                let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+                if snapshot != INVALID_HANDLE_VALUE {
+                    let mut entry = PROCESSENTRY32W {
+                        dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+                        cntUsage: 0,
+                        th32ProcessID: 0,
+                        th32DefaultHeapID: 0,
+                        th32ModuleID: 0,
+                        cntThreads: 0,
+                        th32ParentProcessID: 0,
+                        pcPriClassBase: 0,
+                        dwFlags: 0,
+                        szExeFile: [0; 260],
+                    };
+
+                    if Process32FirstW(snapshot, &mut entry) != 0 {
+                        loop {
+                            let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(260);
+                            let exe_name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
+                            if exe_name == target {
+                                pids.push(entry.th32ProcessID);
+                            }
+                            if Process32NextW(snapshot, &mut entry) == 0 {
+                                break;
+                            }
+                        }
+                    }
+                    CloseHandle(snapshot);
+                }
+
+                if !pids.is_empty() {
+                    struct EnumData {
+                        pids: Vec<u32>,
+                        windows: Vec<HWND>,
+                    }
+
+                    let mut data = EnumData {
+                        pids,
+                        windows: Vec::new(),
+                    };
+
+                    unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+                        let data = &mut *(lparam as *mut EnumData);
+                        let mut pid: u32 = 0;
+                        GetWindowThreadProcessId(hwnd, &mut pid);
+                        if data.pids.contains(&pid) {
+                            if IsWindowVisible(hwnd) != 0 {
+                                data.windows.push(hwnd);
+                            }
+                        }
+                        1
+                    }
+
+                    EnumWindows(enum_windows_callback, &mut data as *mut EnumData as LPARAM);
+
+                    if !data.windows.is_empty() {
+                        let hwnd = data.windows[0];
+                        let last_active = GetLastActivePopup(hwnd);
+                        let target_hwnd = if IsWindowVisible(last_active) != 0 { last_active } else { hwnd };
+
+                        if IsIconic(target_hwnd) != 0 {
+                            ShowWindow(target_hwnd, SW_RESTORE);
+                        } else {
+                            ShowWindow(target_hwnd, SW_SHOW);
+                        }
+                        SetForegroundWindow(target_hwnd);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
         Command::new(launch_path)
             .spawn()
             .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;

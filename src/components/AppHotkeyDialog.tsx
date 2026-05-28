@@ -67,6 +67,7 @@ function findDuplicateAccelerator(
   accelerator: string,
   excludeAppKey: string,
   excludeHotkeyId?: string,
+  action?: "open" | "keys",
 ): string | null {
   for (const [appKey, app] of Object.entries(config.apps)) {
     for (const binding of app.hotkeys ?? []) {
@@ -74,7 +75,12 @@ function findDuplicateAccelerator(
         continue;
       }
       if (binding.accelerator === accelerator) {
-        return `${appKey} → ${binding.name}`;
+        if (appKey === excludeAppKey) {
+          return `${appKey} → ${binding.name}`;
+        }
+        if (action === "open" && binding.action === "open") {
+          return `${appKey} → ${binding.name} (phím tắt toàn hệ thống)`;
+        }
       }
     }
   }
@@ -148,7 +154,7 @@ export function AppHotkeyDialog({
       return null;
     }
 
-    const duplicate = findDuplicateAccelerator(config, accelerator, appKey, editingId ?? undefined);
+    const duplicate = findDuplicateAccelerator(config, accelerator, appKey, editingId ?? undefined, action);
     if (duplicate) {
       setError(`Phím tắt này đã được dùng bởi ${duplicate}`);
       return null;
