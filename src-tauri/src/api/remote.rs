@@ -8,7 +8,7 @@ use axum::Json;
 use serde::Serialize;
 
 use crate::apps::get_app_icon_png;
-use crate::config::{AppEntry, RemoteDeckLayout};
+use crate::config::{AppEntry, AppHotkeyBinding, RemoteDeckLayout};
 use crate::remote_icons::{content_type_for_filename, load_custom_icon, slot_id};
 use crate::state::{SharedState, APP_VERSION};
 use crate::uploads::MAX_UPLOAD_BYTES;
@@ -22,6 +22,16 @@ const PWA_ICON_192: &[u8] = include_bytes!("../../assets/pwa-icon-192.png");
 const PWA_ICON_512: &[u8] = include_bytes!("../../assets/pwa-icon-512.png");
 
 #[derive(Serialize)]
+struct DeckHotkeyItem {
+    id: String,
+    name: String,
+    accelerator: String,
+    action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<String>,
+}
+
+#[derive(Serialize)]
 struct DeckItem {
     #[serde(rename = "type")]
     item_type: String,
@@ -30,6 +40,8 @@ struct DeckItem {
     icon: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    hotkeys: Vec<DeckHotkeyItem>,
 }
 
 #[derive(Serialize)]
@@ -53,6 +65,7 @@ pub fn routes() -> axum::Router<SharedState> {
         .route("/api/pwa/icon-512.png", get(pwa_icon_512))
         .route("/api/deck", get(deck_api))
         .route("/api/icons/{kind}/{key}", get(deck_icon))
+        .route("/api/icons/hotkey/{app_key}/{hotkey_id}", get(hotkey_icon))
         .route("/api/icons/{key}", get(legacy_app_icon))
         .route("/api/nosleep.mp4", get(nosleep_video))
 }
@@ -140,6 +153,7 @@ async fn deck_api(State(state): State<SharedState>) -> Json<DeckResponse> {
                 label: app_display_name(&key, entry),
                 icon: Some(format!("/api/icons/app/{key}")),
                 url: entry.url.clone(),
+                hotkeys: deck_hotkeys(&entry.hotkeys),
             }),
             "cmd" => Some(DeckItem {
                 item_type: "cmd".to_string(),
@@ -147,6 +161,7 @@ async fn deck_api(State(state): State<SharedState>) -> Json<DeckResponse> {
                 label: key.replace('_', " "),
                 icon: Some(format!("/api/icons/cmd/{key}")),
                 url: None,
+                hotkeys: Vec::new(),
             }),
             _ => None,
         })
@@ -223,6 +238,53 @@ async fn legacy_app_icon(
     AxumPath(key): AxumPath<String>,
 ) -> Response {
     deck_icon(State(state), AxumPath(("app".to_string(), key))).await
+}
+
+fn deck_hotkeys(bindings: &[AppHotkeyBinding]) -> Vec<DeckHotkeyItem> {
+    bindings
+        .iter()
+        .map(|binding| DeckHotkeyItem {
+            id: binding.id.clone(),
+            name: binding.name.clone(),
+            accelerator: binding.accelerator.clone(),
+            action: binding.action.clone(),
+            icon: binding.icon.clone(),
+        })
+        .collect()
+}
+
+async fn hotkey_icon(
+    State(state): State<SharedState>,
+    AxumPath((app_key, hotkey_id)): AxumPath<(String, String)>,
+) -> Response {
+    let config = state.config.read().unwrap();
+    let Some(entry) = config.apps.get(&app_key) else {
+        return default_icon_response("app");
+    };
+    let Some(binding) = entry.hotkeys.iter().find(|item| item.id == hotkey_id) else {
+        return default_icon_response("app");
+    };
+    let Some(filename) = binding
+        .icon
+        .as_deref()
+        .and_then(crate::remote_icons::custom_icon_filename)
+    else {
+        return default_icon_response("app");
+    };
+
+    if let Some(bytes) = load_custom_icon(&state.app_handle, filename) {
+        let content_type = content_type_for_filename(filename);
+        return (
+            [(
+                header::CONTENT_TYPE,
+                content_type,
+            ), (header::CACHE_CONTROL, "public, max-age=3600")],
+            bytes,
+        )
+            .into_response();
+    }
+
+    default_icon_response("app")
 }
 
 fn app_display_name(key: &str, entry: &AppEntry) -> String {

@@ -11,6 +11,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/api/pwa/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/api/pwa/icon-180.png" />
   <link rel="apple-touch-icon" href="/api/pwa/icon-180.png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <title>TrayLink Remote</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -493,10 +494,48 @@
     html:-webkit-full-screen .toolbar-btn#btn-fullscreen .icon-exit {
       display: block;
     }
+
+    .toolbar-btn.hidden { display: none; }
+
+    .hotkey-tile .tile-inner .hotkey-fa-icon {
+      font-size: clamp(1.35rem, 9vw, 1.85rem);
+      color: var(--text);
+      opacity: 0.92;
+      line-height: 1;
+    }
+
+    .hotkey-tile .tile-inner .hotkey-icon {
+      width: 44%;
+      height: 44%;
+      opacity: 0.85;
+    }
+
+    .tile-has-hotkey {
+      position: relative;
+    }
+
+    .tile-has-hotkey .tile-inner::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px var(--tile);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <div class="toolbar-left">
+    <button type="button" class="toolbar-btn hidden" id="btn-back" title="Quay lại" aria-label="Quay lại">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 12H5"/>
+        <path d="M12 19l-7-7 7-7"/>
+      </svg>
+    </button>
     <button type="button" class="toolbar-btn" id="btn-upload" title="Upload file lên PC" aria-label="Upload file lên PC">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -618,9 +657,12 @@
     let token = loadToken();
     if (token) persistToken(token);
     let deckData = null;
+    let deckItems = [];
+    let selectedApp = null;
 
     const toastEl = document.getElementById("toast");
     const appEl = document.getElementById("app");
+    const btnBack = document.getElementById("btn-back");
     const tokenOverlay = document.getElementById("token-overlay");
     const tokenInput = document.getElementById("token-input");
     const tokenSubmit = document.getElementById("token-submit");
@@ -1161,6 +1203,10 @@
     }
 
     function setupToolbar() {
+      btnBack.addEventListener("click", () => {
+        showAppGrid();
+      });
+
       btnFullscreen.addEventListener("click", () => {
         toggleFullscreen();
       });
@@ -1196,6 +1242,7 @@
 
       updateFullscreenButton();
       updateKeepAwakeButton();
+      updateBackButton();
     }
 
     function iconUrl(item) {
@@ -1207,6 +1254,177 @@
         return item.icon;
       }
       return `/api/icons/${type}/${encodeURIComponent(item.key)}`;
+    }
+
+    function formatAcceleratorDisplay(accelerator) {
+      const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      return accelerator
+        .split("+")
+        .map((part) => {
+          switch (part) {
+            case "CommandOrControl": return isMac ? "⌘" : "Ctrl";
+            case "Shift": return isMac ? "⇧" : "Shift";
+            case "Alt": return isMac ? "⌥" : "Alt";
+            case "Control": return isMac ? "⌃" : "Ctrl";
+            default: return part;
+          }
+        })
+        .join(isMac ? "" : " + ");
+    }
+
+    function keyboardIcon() {
+      return `<svg class="fallback-icon hotkey-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <rect x="2" y="6" width="20" height="12" rx="2"/>
+        <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>
+      </svg>`;
+    }
+
+    function hotkeyIconHtml(appKey, binding) {
+      const icon = binding.icon;
+      if (!icon) return keyboardIcon();
+      if (icon.startsWith("fa:")) {
+        const name = icon.slice(3);
+        return `<i class="fa-solid fa-${name} hotkey-fa-icon" aria-hidden="true"></i>`;
+      }
+      if (icon.startsWith("custom:")) {
+        const url = `/api/icons/hotkey/${encodeURIComponent(appKey)}/${encodeURIComponent(binding.id)}`;
+        return `<img class="hotkey-icon" src="${url}" alt="" loading="eager" decoding="async" />`;
+      }
+      return keyboardIcon();
+    }
+
+    function updateBackButton() {
+      btnBack.classList.toggle("hidden", !selectedApp);
+    }
+
+    function showAppGrid() {
+      selectedApp = null;
+      updateBackButton();
+      render(deckData);
+    }
+
+    function showAppHotkeys(app) {
+      selectedApp = app;
+      updateBackButton();
+      renderAppHotkeys(app);
+    }
+
+    function renderAppHotkeys(app) {
+      const label = app.label || app.key;
+      const src = iconUrl(app);
+      const hotkeys = app.hotkeys || [];
+
+      const hotkeyTiles = hotkeys.map((binding) => {
+        const hotkeyLabel = formatAcceleratorDisplay(binding.accelerator);
+        const actionLabel = binding.action === "open" ? "Mở app" : binding.name;
+        return `
+          <button
+            class="tile hotkey-tile"
+            data-hotkey-id="${binding.id}"
+            aria-label="${actionLabel} — ${hotkeyLabel}"
+          >
+            <div class="tile-inner">
+              ${hotkeyIconHtml(app.key, binding)}
+            </div>
+            <span class="tile-label">${binding.name}</span>
+          </button>`;
+      }).join("");
+
+      appEl.innerHTML = `
+        <div class="header">
+          <h1><span class="status-dot"></span>${label}</h1>
+        </div>
+        <div class="grid">
+          <button class="tile hotkey-tile" data-hotkey-action="open" aria-label="Mở ${label}">
+            <div class="tile-inner">
+              <img src="${src}" alt="" loading="eager" decoding="async" />
+            </div>
+            <span class="tile-label">Mở app</span>
+          </button>
+          ${hotkeyTiles}
+        </div>`;
+
+      appEl.querySelectorAll(".tile img").forEach((img) => {
+        img.addEventListener("error", () => {
+          const tile = img.closest(".tile");
+          const type = tile?.dataset.type || "app";
+          img.outerHTML = type === "cmd" ? cmdIcon() : defaultIcon();
+        });
+      });
+
+      appEl.querySelector("[data-hotkey-action='open']")?.addEventListener("click", (e) => {
+        trigger("app", app.key, app.url, e.currentTarget);
+      });
+
+      appEl.querySelectorAll("[data-hotkey-id]").forEach((tile) => {
+        tile.addEventListener("click", (e) => {
+          triggerAppHotkey(app.key, tile.dataset.hotkeyId, e.currentTarget);
+        });
+      });
+    }
+
+    async function triggerAppHotkey(appKey, hotkeyId, tileEl) {
+      if (keepAwakeEnabled) renewKeepAwake();
+
+      const tile = tileEl;
+      if (tile) tile.classList.add("pressed");
+
+      try {
+        let res;
+        if (deckData.allow_get) {
+          const qs = new URLSearchParams({ app: appKey, hotkey: hotkeyId });
+          if (token) qs.set("token", token);
+          res = await fetch(`/send-hotkey?${qs}`);
+        } else {
+          const headers = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = "Bearer " + token;
+          res = await fetch("/send-hotkey", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ app: appKey, hotkey: hotkeyId }),
+          });
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || data.message || `Lỗi ${res.status}`);
+
+        vibrate(50);
+        if (tile) {
+          tile.classList.remove("pressed");
+          tile.classList.add("success");
+          setTimeout(() => tile.classList.remove("success"), 600);
+        }
+        showToast(data.message || "Đã gửi phím tắt", "success");
+      } catch (err) {
+        vibrate([30, 50, 30]);
+        if (tile) {
+          tile.classList.remove("pressed");
+          tile.classList.add("error");
+          setTimeout(() => tile.classList.remove("error"), 800);
+        }
+        showToast(String(err.message || err), "error");
+      }
+    }
+
+    function handleTileClick(item, tileEl) {
+      const type = item.type || "app";
+      if (type === "app") {
+        trigger("app", item.key, item.url, tileEl);
+        showAppHotkeys(item);
+        return;
+      }
+      trigger(type, item.key, item.url, tileEl);
+    }
+
+    function bindTileInteractions(tile, item) {
+      tile.addEventListener("click", () => {
+        handleTileClick(item, tile);
+      });
+
+      const type = item.type || "app";
+      if (type === "app" && item.hotkeys?.length > 0) {
+        tile.title = `${item.label || item.key} — chạm: mở app và phím tắt`;
+      }
     }
 
     function appDisplayLabel(key, path) {
@@ -1242,10 +1460,10 @@
       return res.json();
     }
 
-    async function trigger(type, key, url) {
+    async function trigger(type, key, url, tileEl) {
       if (keepAwakeEnabled) renewKeepAwake();
 
-      const tile = document.querySelector(`[data-key="${key}"][data-type="${type}"]`);
+      const tile = tileEl || document.querySelector(`[data-key="${key}"][data-type="${type}"]`);
       if (tile) tile.classList.add("pressed");
 
       try {
@@ -1294,9 +1512,10 @@
       const label = item.label || item.key;
       const src = iconUrl(item);
       const iconHtml = `<img src="${src}" alt="" loading="eager" decoding="async" />`;
+      const hotkeyClass = type === "app" && item.hotkeys?.length > 0 ? " tile-has-hotkey" : "";
 
       return `
-        <button class="tile" data-key="${item.key}" data-type="${type}" aria-label="${label}">
+        <button class="tile${hotkeyClass}" data-key="${item.key}" data-type="${type}" aria-label="${label}">
           <div class="tile-inner">${iconHtml}</div>
           <span class="tile-label">${label}</span>
         </button>`;
@@ -1306,7 +1525,7 @@
       const items = deck.items || [];
       const apps = deck.apps || [];
       const commands = deck.commands || [];
-      const deckItems = items.length
+      deckItems = items.length
         ? items
         : [
             ...apps.map((item) => ({ ...item, type: "app" })),
@@ -1328,13 +1547,11 @@
         </div>
         <div class="grid">${deckItems.map((item) => renderTile(item)).join("")}</div>`;
 
-      appEl.querySelectorAll(".tile").forEach(tile => {
-        tile.addEventListener("click", () => {
-          const key = tile.dataset.key;
-          const type = tile.dataset.type;
-          const app = deckItems.find((item) => item.type === "app" && item.key === key);
-          trigger(type, key, app?.url);
-        });
+      appEl.querySelectorAll(".tile").forEach((tile) => {
+        const key = tile.dataset.key;
+        const type = tile.dataset.type;
+        const item = deckItems.find((entry) => entry.key === key && (entry.type || "app") === type);
+        if (item) bindTileInteractions(tile, item);
       });
 
       appEl.querySelectorAll(".tile img").forEach(img => {

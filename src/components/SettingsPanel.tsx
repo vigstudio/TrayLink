@@ -16,6 +16,7 @@ import {
   setAutostart,
   updateConfig,
 } from "@/lib/tauri";
+import { AccessibilityPanel } from "@/components/AccessibilityPanel";
 
 function authHeader(requireToken: boolean, token: string, showToken: boolean) {
   if (!requireToken) {
@@ -210,6 +211,8 @@ export function SettingsPanel() {
           </div>
         </CardContent>
       </Card>
+
+      <AccessibilityPanel />
 
       <Card>
         <CardHeader>

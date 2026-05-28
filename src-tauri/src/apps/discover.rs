@@ -43,6 +43,20 @@ fn collect_macos_apps(apps: &mut Vec<InstalledApp>) {
 
 #[cfg(target_os = "macos")]
 fn collect_app_bundles(dir: &Path, apps: &mut Vec<InstalledApp>) {
+    collect_app_bundles_recursive(dir, apps, 0, 4);
+}
+
+#[cfg(target_os = "macos")]
+fn collect_app_bundles_recursive(
+    dir: &Path,
+    apps: &mut Vec<InstalledApp>,
+    depth: usize,
+    max_depth: usize,
+) {
+    if depth > max_depth {
+        return;
+    }
+
     let entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(_) => return,
@@ -50,20 +64,34 @@ fn collect_app_bundles(dir: &Path, apps: &mut Vec<InstalledApp>) {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().and_then(|ext| ext.to_str()) != Some("app") {
+
+        if path.extension().and_then(|ext| ext.to_str()) == Some("app") {
+            let name = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .unwrap_or("Unknown")
+                .to_string();
+
+            apps.push(InstalledApp {
+                name,
+                path: path.to_string_lossy().to_string(),
+            });
             continue;
         }
 
-        let name = path
-            .file_stem()
-            .and_then(|stem| stem.to_str())
-            .unwrap_or("Unknown")
-            .to_string();
+        if !path.is_dir() {
+            continue;
+        }
 
-        apps.push(InstalledApp {
-            name,
-            path: path.to_string_lossy().to_string(),
-        });
+        let dir_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        if dir_name.starts_with('.') {
+            continue;
+        }
+
+        collect_app_bundles_recursive(&path, apps, depth + 1, max_depth);
     }
 }
 

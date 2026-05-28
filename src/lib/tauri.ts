@@ -1,5 +1,15 @@
 import { invoke as tauriInvoke, isTauri } from "@tauri-apps/api/core";
 
+export interface AppHotkeyBinding {
+  id: string;
+  name: string;
+  accelerator: string;
+  /** `open` = mở/focus app · `keys` = gửi phím tắt vào app */
+  action?: "open" | "keys";
+  /** `fa:floppy-disk` · `custom:uuid.png` */
+  icon?: string | null;
+}
+
 export interface AppEntry {
   path: string;
   name?: string;
@@ -7,6 +17,7 @@ export interface AppEntry {
   url?: string;
   /** Bật mở app kèm URL (cho trình duyệt không tự nhận diện). */
   url_enabled?: boolean;
+  hotkeys?: AppHotkeyBinding[];
 }
 
 export interface ExecEntry {
@@ -191,6 +202,10 @@ export function slugifyAppKey(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
+export function slugifyHotkeyId(name: string): string {
+  return slugifyAppKey(name) || "hotkey";
+}
+
 export async function getAppIcon(path: string): Promise<string | null> {
   return invoke<string | null>("get_app_icon", { path });
 }
@@ -243,8 +258,70 @@ export async function getDeckIconDataUrl(
   return invoke<string | null>("get_deck_icon_data_url", { itemType, key });
 }
 
+export async function getHotkeyIconDataUrl(
+  appKey: string,
+  hotkeyId: string,
+): Promise<string | null> {
+  return invoke<string | null>("get_hotkey_icon_data_url", { appKey, hotkeyId });
+}
+
+export async function setHotkeyIconFromFile(
+  appKey: string,
+  hotkeyId: string,
+  sourcePath: string,
+): Promise<string> {
+  return invoke<string>("set_hotkey_icon_from_file", {
+    appKey,
+    hotkeyId,
+    sourcePath,
+  });
+}
+
+export async function cleanupHotkeyIcon(icon: string): Promise<void> {
+  return invoke("cleanup_hotkey_icon", { icon });
+}
+
 export async function testOpenApp(appKey: string): Promise<string> {
   return invoke<string>("test_open_app", { appKey });
+}
+
+export interface AccessibilityStatus {
+  supported: boolean;
+  trusted: boolean;
+  dev_build?: boolean;
+  executable_path?: string | null;
+  dev_app_path?: string | null;
+  codesign_identifier?: string | null;
+  stable_signature?: boolean;
+  hint: string;
+}
+
+export async function getAccessibilityStatus(): Promise<AccessibilityStatus> {
+  return invoke<AccessibilityStatus>("get_accessibility_status");
+}
+
+export async function promptAccessibilityPermission(): Promise<boolean> {
+  return invoke<boolean>("prompt_accessibility_permission");
+}
+
+export async function openAccessibilitySettings(): Promise<void> {
+  return invoke("open_accessibility_settings");
+}
+
+export async function signDevBinary(): Promise<string> {
+  return invoke<string>("sign_dev_binary_cmd");
+}
+
+export async function openDevAppBundle(): Promise<string> {
+  return invoke<string>("open_dev_app_bundle_cmd");
+}
+
+export async function resetAccessibility(): Promise<string> {
+  return invoke<string>("reset_accessibility_cmd");
+}
+
+export async function testHotkeyInput(): Promise<string> {
+  return invoke<string>("test_hotkey_input");
 }
 
 export function apiGetUrl(

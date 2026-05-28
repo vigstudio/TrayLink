@@ -17,6 +17,8 @@ use crate::api::server::{https_port, restart_server};
 use crate::api::upload;
 use crate::uploads::MAX_UPLOAD_BYTES;
 use crate::launcher::{exec_cmd, open_app, open_file, LauncherError};
+#[cfg(not(target_os = "macos"))]
+use crate::launcher::hotkey;
 use crate::net;
 use crate::state::{LogEntry, SharedState, APP_VERSION};
 
@@ -69,6 +71,20 @@ pub struct ExecQuery {
     token: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct SendHotkeyQuery {
+    app: String,
+    hotkey: String,
+    #[serde(default)]
+    token: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct SendHotkeyRequest {
+    app: String,
+    hotkey: String,
+}
+
 #[derive(Serialize)]
 struct SuccessResponse {
     ok: bool,
@@ -83,6 +99,7 @@ pub fn build_router(state: SharedState) -> Router {
         .route("/open-app", get(open_app_get).post(open_app_post))
         .route("/open-file", get(open_file_get).post(open_file_post))
         .route("/exec", get(exec_get).post(exec_post))
+        .route("/send-hotkey", get(send_hotkey_get).post(send_hotkey_post))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES as usize))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
@@ -357,6 +374,142 @@ async fn exec_get(
     }
 
     handle_exec(&state, "GET", started, &ip, &query.cmd)
+}
+
+async fn send_hotkey_post(
+    State(state): State<SharedState>,
+    ClientIp(ip): ClientIp,
+    headers: HeaderMap,
+    Json(body): Json<SendHotkeyRequest>,
+) -> Response {
+    let started = Instant::now();
+    if let Err(resp) = extract_token(&headers, None, &state) {
+        log_request(
+            &state,
+            "POST",
+            "/send-hotkey",
+            401,
+            started.elapsed().as_millis() as u64,
+            &ip,
+        );
+        return resp;
+    }
+
+    handle_send_hotkey(&state, "POST", started, &ip, &body.app, &body.hotkey)
+}
+
+async fn send_hotkey_get(
+    State(state): State<SharedState>,
+    ClientIp(ip): ClientIp,
+    headers: HeaderMap,
+    Query(query): Query<SendHotkeyQuery>,
+) -> Response {
+    let started = Instant::now();
+    if !state.config.read().unwrap().allow_get {
+        log_request(
+            &state,
+            "GET",
+            "/send-hotkey",
+            405,
+            started.elapsed().as_millis() as u64,
+            &ip,
+        );
+        return reject_get_disabled();
+    }
+
+    if let Err(resp) = extract_token(&headers, query.token.as_deref(), &state) {
+        log_request(
+            &state,
+            "GET",
+            "/send-hotkey",
+            401,
+            started.elapsed().as_millis() as u64,
+            &ip,
+        );
+        return resp;
+    }
+
+    handle_send_hotkey(&state, "GET", started, &ip, &query.app, &query.hotkey)
+}
+
+fn handle_send_hotkey(
+    state: &SharedState,
+    method: &str,
+    started: Instant,
+    client_ip: &str,
+    app_key: &str,
+    hotkey_id: &str,
+) -> Response {
+    let config = state.config.read().unwrap();
+    let apps = config.apps.clone();
+    let entry = match apps.get(app_key) {
+        Some(entry) => entry.clone(),
+        None => {
+            return error_response(
+                state,
+                method,
+                "/send-hotkey",
+                started,
+                client_ip,
+                LauncherError::AppNotAllowed(app_key.to_string()),
+            );
+        }
+    };
+
+    let binding = match entry.hotkeys.iter().find(|item| item.id == hotkey_id) {
+        Some(binding) => binding.clone(),
+        None => {
+            return error_response(
+                state,
+                method,
+                "/send-hotkey",
+                started,
+                client_ip,
+                LauncherError::LaunchFailed(format!(
+                    "hotkey '{hotkey_id}' not found for app '{app_key}'"
+                )),
+            );
+        }
+    };
+    drop(config);
+
+    let result = {
+        #[cfg(target_os = "macos")]
+        {
+            crate::macos::executor::execute_binding(
+                &state.app_handle,
+                app_key,
+                &binding,
+                &apps,
+            )
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            hotkey::execute_binding(app_key, &binding, &apps)
+        }
+    };
+
+    match result {
+        Ok(()) => {
+            log_request(
+                state,
+                method,
+                "/send-hotkey",
+                200,
+                started.elapsed().as_millis() as u64,
+                client_ip,
+            );
+            (
+                StatusCode::OK,
+                Json(SuccessResponse {
+                    ok: true,
+                    message: format!("executed hotkey '{}' for app '{app_key}'", binding.name),
+                }),
+            )
+                .into_response()
+        }
+        Err(err) => error_response(state, method, "/send-hotkey", started, client_ip, err),
+    }
 }
 
 fn handle_exec(

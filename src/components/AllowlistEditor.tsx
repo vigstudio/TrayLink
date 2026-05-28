@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Keyboard, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
 import { AppPathPicker } from "@/components/AppPathPicker";
 import { AppApiGuide } from "@/components/AppApiGuide";
 import { AppEditDialog } from "@/components/AppEditDialog";
+import { AppHotkeyDialog } from "@/components/AppHotkeyDialog";
 import { AppIcon } from "@/components/AppIcon";
 import { isBrowserApp, shouldShowAppUrl, validateAppUrl } from "@/lib/browser";
 import { Switch } from "@/components/ui/switch";
@@ -45,6 +46,7 @@ export function AllowlistEditor() {
   const [lanIp, setLanIp] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [editingAppKey, setEditingAppKey] = useState<string | null>(null);
+  const [hotkeyAppKey, setHotkeyAppKey] = useState<string | null>(null);
 
   const showUrlField = shouldShowAppUrl(appPath, appUrlEnabled);
 
@@ -183,6 +185,7 @@ export function AllowlistEditor() {
 
   const appEntries = Object.entries(config.apps);
   const editingEntry = editingAppKey ? config.apps[editingAppKey] : null;
+  const hotkeyEntry = hotkeyAppKey ? config.apps[hotkeyAppKey] : null;
 
   return (
     <div className="space-y-4">
@@ -198,13 +201,14 @@ export function AllowlistEditor() {
                 <TableHead>Key</TableHead>
                 <TableHead>Tên hiển thị</TableHead>
                 <TableHead>Path</TableHead>
+                <TableHead>Phím tắt</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {appEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Chưa có app nào — thêm app bên dưới
                   </TableCell>
                 </TableRow>
@@ -224,7 +228,33 @@ export function AllowlistEditor() {
                       {entry.path}
                     </TableCell>
                     <TableCell>
+                      {(entry.hotkeys?.length ?? 0) > 0 ? (
+                        <button
+                          type="button"
+                          className="text-xs rounded-md bg-muted px-2 py-1 hover:bg-muted/80 transition-colors"
+                          onClick={() => setHotkeyAppKey(key)}
+                        >
+                          {entry.hotkeys!.length} phím
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title={
+                            (entry.hotkeys?.length ?? 0) > 0
+                              ? "Quản lý phím tắt"
+                              : "Thêm phím tắt"
+                          }
+                          onClick={() => setHotkeyAppKey(key)}
+                        >
+                          <Keyboard className="size-3.5" />
+                          Phím tắt
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -344,6 +374,20 @@ export function AllowlistEditor() {
                 if (!open) setEditingAppKey(null);
               }}
               onSave={(updated) => updateApp(editingAppKey, updated)}
+            />
+          )}
+
+          {hotkeyAppKey && hotkeyEntry && (
+            <AppHotkeyDialog
+              appKey={hotkeyAppKey}
+              entry={hotkeyEntry}
+              config={config}
+              open={Boolean(hotkeyAppKey)}
+              saving={saving}
+              onOpenChange={(open) => {
+                if (!open) setHotkeyAppKey(null);
+              }}
+              onSave={(updated) => updateApp(hotkeyAppKey, updated)}
             />
           )}
         </CardContent>

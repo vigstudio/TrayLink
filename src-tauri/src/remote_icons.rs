@@ -58,6 +58,16 @@ pub fn custom_icon_data_url(app: &AppHandle, filename: &str) -> Option<String> {
     Some(format!("data:{mime};base64,{}", STANDARD.encode(bytes)))
 }
 
+pub fn custom_icon_filename(icon: &str) -> Option<&str> {
+    icon.strip_prefix("custom:")
+}
+
+pub fn delete_hotkey_icon(app: &AppHandle, icon: Option<&str>) {
+    if let Some(filename) = icon.and_then(custom_icon_filename) {
+        let _ = delete_custom_icon(app, filename);
+    }
+}
+
 pub fn delete_custom_icon(app: &AppHandle, filename: &str) -> Result<(), String> {
     let path = icon_path(app, filename)?;
     if path.exists() {

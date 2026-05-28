@@ -107,6 +107,32 @@ impl RemoteDeckLayout {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppHotkeyBinding {
+    pub id: String,
+    pub name: String,
+    pub accelerator: String,
+    /// `open` = mở/focus app · `keys` = gửi tổ hợp phím vào app
+    #[serde(default = "default_hotkey_action")]
+    pub action: String,
+    /// `fa:floppy-disk` · `custom:uuid.png`
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+}
+
+fn default_hotkey_action() -> String {
+    "keys".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LegacyHotkeyEntry {
+    pub accelerator: String,
+    pub target_type: String,
+    pub target_key: String,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub port: u16,
     pub token: String,
@@ -119,6 +145,9 @@ pub struct AppConfig {
     pub commands: HashMap<String, ExecEntry>,
     #[serde(default)]
     pub remote_deck: RemoteDeckLayout,
+    /// Chỉ dùng khi migrate config cũ — không ghi ra file mới.
+    #[serde(default, skip_serializing)]
+    pub hotkeys: HashMap<String, LegacyHotkeyEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,6 +162,30 @@ pub struct AppEntry {
     /// Cho phép mở app kèm URL (trình duyệt hoặc app hỗ trợ URL).
     #[serde(default)]
     pub url_enabled: bool,
+    #[serde(default)]
+    pub hotkeys: Vec<AppHotkeyBinding>,
+    /// Migrate field cũ — một phím tắt duy nhất.
+    #[serde(default, skip_serializing, alias = "hotkey")]
+    legacy_hotkey: Option<String>,
+}
+
+impl AppEntry {
+    pub fn migrate_legacy_fields(&mut self) -> bool {
+        let mut changed = false;
+        if let Some(accelerator) = self.legacy_hotkey.take() {
+            if self.hotkeys.is_empty() {
+                self.hotkeys.push(AppHotkeyBinding {
+                    id: "open".to_string(),
+                    name: "Mở app".to_string(),
+                    accelerator,
+                    action: "open".to_string(),
+                    icon: None,
+                });
+                changed = true;
+            }
+        }
+        changed
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

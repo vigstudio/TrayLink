@@ -75,6 +75,18 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
         save_config(app, &config)?;
     }
 
+    if migrate_legacy_hotkeys(&mut config) {
+        save_config(app, &config)?;
+    }
+
+    if migrate_app_hotkey_field(&mut config) {
+        save_config(app, &config)?;
+    }
+
+    if sanitize_app_hotkeys(&mut config) {
+        save_config(app, &config)?;
+    }
+
     #[cfg(target_os = "windows")]
     if migrate_lnk_paths(&mut config) {
         save_config(app, &config)?;
@@ -89,6 +101,57 @@ fn migrate_url_enabled(config: &mut AppConfig) -> bool {
         if entry.url.is_some() && !entry.url_enabled {
             entry.url_enabled = true;
             changed = true;
+        }
+    }
+    changed
+}
+
+fn migrate_legacy_hotkeys(config: &mut AppConfig) -> bool {
+    if config.hotkeys.is_empty() {
+        return false;
+    }
+
+    let mut changed = false;
+    for entry in config.hotkeys.drain().map(|(_, v)| v) {
+        if entry.target_type == "app" {
+            if let Some(app) = config.apps.get_mut(&entry.target_key) {
+                if app.hotkeys.is_empty() {
+                    app.hotkeys.push(crate::config::AppHotkeyBinding {
+                        id: "open".to_string(),
+                        name: "Mở app".to_string(),
+                        accelerator: entry.accelerator,
+                        action: "open".to_string(),
+                        icon: None,
+                    });
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    changed
+}
+
+fn migrate_app_hotkey_field(config: &mut AppConfig) -> bool {
+    let mut changed = false;
+    for app in config.apps.values_mut() {
+        if app.migrate_legacy_fields() {
+            changed = true;
+        }
+    }
+    changed
+}
+
+fn sanitize_app_hotkeys(config: &mut AppConfig) -> bool {
+    let mut changed = false;
+    for app in config.apps.values_mut() {
+        for binding in &mut app.hotkeys {
+            if let Some(normalized) = crate::launcher::hotkey::normalize_accelerator_string(&binding.accelerator) {
+                if normalized != binding.accelerator {
+                    binding.accelerator = normalized;
+                    changed = true;
+                }
+            }
         }
     }
     changed
