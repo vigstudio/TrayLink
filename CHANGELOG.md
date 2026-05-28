@@ -7,13 +7,19 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-05-28
+
 ### Added
 
 - **Phím tắt theo từng app** — nhiều binding/app (Save, Export, Copy…); dialog quản lý trong Allowlist
 - **Sửa phím tắt** đã thêm; **icon** Font Awesome (kho có sẵn) hoặc upload hình tùy chỉnh
 - **Global shortcut** plugin (`tauri-plugin-global-shortcut`) — chỉ đăng ký phím loại **Mở / focus app**; phím **Gửi phím** chỉ qua Remote/API (không chặn phím gốc của app)
 - API **`GET/POST /send-hotkey`** — Remote gọi phím tắt theo `app` + `hotkey` id
-- Remote Deck: chạm app → **mở app trên PC** và vào màn phím tắt; lưới tile giống launcher
+- Modal **API** từng app: copy link/curl **`/send-hotkey`** cho từng phím đã cấu hình
+- README: tài liệu gọi **`/send-hotkey`** (GET/POST, ví dụ curl, lấy danh sách qua `/api/deck`)
+- **Profile trình duyệt** — chọn profile Chrome, Edge, Firefox… khi thêm/sửa app; quét profile từ hệ thống
+- Remote Deck: chạm app có phím → **mở app trên PC** và vào màn phím tắt; lưới tile giống launcher
+- Remote: tile **Trở về** lớn trong màn phím tắt (dễ bấm trên điện thoại)
 - Remote: hiển thị icon phím tắt (Font Awesome / hình custom); route `/api/icons/hotkey/{app}/{id}`
 - **Accessibility (macOS)** — panel Settings, thử gửi phím, ký dev binary, **TrayLink Dev.app**, reset TCC
 - Script `npm run sign:dev`, `npm run dev:app`; `scripts/sign-dev-macos.sh`, `scripts/sync-dev-app.sh`
@@ -23,7 +29,10 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- Remote: app **không có phím tắt** chỉ mở app, không vào màn phím (tránh màn trống)
+- Remote: **ẩn toast** khi mở app / gửi phím thành công (giữ phản hồi tile + rung)
 - Remote màn phím tắt: bỏ header logo/tên lớn; dùng lưới `.grid` gọn như launcher
+- Dashboard: **ẩn cột Path** trong bảng Apps & Commands
 - Accessibility: không auto-prompt mỗi lần khởi động; hướng dẫn dev dùng **TrayLink Dev.app** thay vì binary `traylink` lẻ
 
 ### Fixed
@@ -32,6 +41,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - macOS: không chặn phím tắt gốc (⌘S, ⌘C…) khi TrayLink đăng ký global cho Photoshop
 - macOS: gửi phím từ Remote/API hoạt động (main thread + CGEvent thay osascript/enigo)
 - macOS dev: chữ ký ổn định `com.phamminhkha.traylink` + app bundle cho Accessibility
+- macOS: mở trình duyệt với **profile** được **focus** đúng (launch binary + AppleScript activate)
 
 ## [0.1.14] - 2026-05-28
 
@@ -194,6 +204,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `open-file` chặn path traversal và system paths
 - `exec` chỉ chấp nhận command key, không chạy raw shell
 
+[0.1.15]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.15
 [0.1.14]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.14
 [0.1.13]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.13
 [0.1.12]: https://github.com/PhamMinhKha/TrayLink/releases/tag/v0.1.12

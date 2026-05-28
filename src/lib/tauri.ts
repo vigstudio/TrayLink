@@ -17,6 +17,8 @@ export interface AppEntry {
   url?: string;
   /** Bật mở app kèm URL (cho trình duyệt không tự nhận diện). */
   url_enabled?: boolean;
+  /** Profile trình duyệt — Chromium: `Default` / `Profile 1`, Firefox: `firefox:...` */
+  browser_profile?: string;
   hotkeys?: AppHotkeyBinding[];
 }
 
@@ -142,8 +144,17 @@ export interface InstalledApp {
   path: string;
 }
 
+export interface BrowserProfile {
+  id: string;
+  name: string;
+}
+
 export async function listInstalledApps(): Promise<InstalledApp[]> {
   return invoke<InstalledApp[]>("list_installed_apps_cmd");
+}
+
+export async function listBrowserProfiles(path: string): Promise<BrowserProfile[]> {
+  return invoke<BrowserProfile[]>("list_browser_profiles", { path });
 }
 
 export async function resolveLaunchPath(path: string): Promise<string> {

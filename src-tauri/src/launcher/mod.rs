@@ -1,4 +1,5 @@
 pub mod browser;
+pub mod browser_profiles;
 pub mod exec_cmd;
 pub mod hotkey;
 pub mod open_app;

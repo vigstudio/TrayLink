@@ -22,6 +22,7 @@ import {
   appDisplayLabel,
 } from "@/lib/remote-deck";
 import { AppPathPicker } from "@/components/AppPathPicker";
+import { BrowserProfileSelect } from "@/components/BrowserProfileSelect";
 import { AppApiGuide } from "@/components/AppApiGuide";
 import { AppEditDialog } from "@/components/AppEditDialog";
 import { AppHotkeyDialog } from "@/components/AppHotkeyDialog";
@@ -37,6 +38,7 @@ export function AllowlistEditor() {
   const [appPath, setAppPath] = useState("");
   const [appUrl, setAppUrl] = useState("");
   const [appUrlEnabled, setAppUrlEnabled] = useState(false);
+  const [appBrowserProfile, setAppBrowserProfile] = useState<string | undefined>();
   const [cmdKey, setCmdKey] = useState("");
   const [cmdWin, setCmdWin] = useState("");
   const [cmdMac, setCmdMac] = useState("");
@@ -94,6 +96,7 @@ export function AllowlistEditor() {
           args: [],
           url_enabled: appUrlEnabled,
           url: showUrlField ? appUrl.trim() || undefined : undefined,
+          browser_profile: appBrowserProfile,
         },
       },
       remote_deck: syncRemoteDeckOnAppAdd(layout, appKey),
@@ -104,6 +107,7 @@ export function AllowlistEditor() {
     setAppPath("");
     setAppUrl("");
     setAppUrlEnabled(false);
+    setAppBrowserProfile(undefined);
   };
 
   const updateApp = async (key: string, updated: AppEntry) => {
@@ -200,7 +204,6 @@ export function AllowlistEditor() {
                 <TableHead className="w-16 shrink-0">Icon</TableHead>
                 <TableHead>Key</TableHead>
                 <TableHead>Tên hiển thị</TableHead>
-                <TableHead>Path</TableHead>
                 <TableHead>Phím tắt</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
@@ -208,7 +211,7 @@ export function AllowlistEditor() {
             <TableBody>
               {appEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Chưa có app nào — thêm app bên dưới
                   </TableCell>
                 </TableRow>
@@ -224,9 +227,6 @@ export function AllowlistEditor() {
                     </TableCell>
                     <TableCell className="font-medium">{key}</TableCell>
                     <TableCell>{entry.name || appDisplayLabel(key, entry.path, entry.name)}</TableCell>
-                    <TableCell className="max-w-[240px] truncate font-mono text-xs">
-                      {entry.path}
-                    </TableCell>
                     <TableCell>
                       {(entry.hotkeys?.length ?? 0) > 0 ? (
                         <button
@@ -314,6 +314,7 @@ export function AllowlistEditor() {
               value={appPath}
               onChange={(newPath) => {
                 setAppPath(newPath);
+                setAppBrowserProfile(undefined);
                 if (isBrowserApp(newPath)) {
                   setAppUrlEnabled(true);
                 }
@@ -326,6 +327,13 @@ export function AllowlistEditor() {
               onDisplayNamePick={setAppName}
             />
           </div>
+
+          <BrowserProfileSelect
+            id="app-browser-profile"
+            path={appPath}
+            value={appBrowserProfile}
+            onChange={setAppBrowserProfile}
+          />
 
           <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
             <div className="space-y-0.5">

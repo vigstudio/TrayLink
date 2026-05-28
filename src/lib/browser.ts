@@ -28,6 +28,14 @@ export function appSupportsUrl(path: string, urlEnabled?: boolean): boolean {
   return shouldShowAppUrl(path, urlEnabled);
 }
 
+export function supportsBrowserProfiles(path: string): boolean {
+  const lower = path.toLowerCase();
+  if (!lower.trim() || lower.includes("safari")) {
+    return false;
+  }
+  return isBrowserApp(path);
+}
+
 export function validateAppUrl(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed) {

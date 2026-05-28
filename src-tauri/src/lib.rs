@@ -111,6 +111,11 @@ fn test_open_app(state: tauri::State<'_, Arc<AppState>>, app_key: String) -> Res
 }
 
 #[tauri::command]
+fn list_browser_profiles(path: String) -> Vec<launcher::browser_profiles::BrowserProfile> {
+    launcher::browser_profiles::list_profiles(&path)
+}
+
+#[tauri::command]
 fn get_app_icon(path: String) -> Option<String> {
     apps::get_app_icon_data_url(&path)
 }
@@ -441,6 +446,7 @@ pub fn run() {
             get_server_status,
             list_installed_apps_cmd,
             resolve_launch_path_cmd,
+            list_browser_profiles,
             get_app_icon,
             set_deck_icon_from_file,
             clear_deck_icon,

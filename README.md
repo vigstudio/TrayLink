@@ -18,6 +18,7 @@ App launcher chạy nền trên PC, lắng nghe HTTP API trên mạng LAN để 
 - Dashboard: trạng thái server, request log, quản lý app, settings, copy link API
 - **Remote Deck**: mở link trên điện thoại/tablet cùng Wi‑Fi → grid icon app kiểu Stream Deck, chạm để mở app trên PC
 - **Upload từ điện thoại**: gửi ảnh, video, tài liệu từ Remote Deck lên PC (lưu vào `Downloads/TrayLink`)
+- **Phím tắt theo app**: cấu hình trong Dashboard, gọi qua Remote Deck hoặc HTTP API `/send-hotkey`
 
 ## Hướng dẫn sử dụng
 
@@ -265,7 +266,8 @@ Nếu bật token: thêm `?token=<token>` vào URL, hoặc nhập token khi tran
 Trong Dashboard → tab **Remote Deck**: kéo thả trên khung preview để sắp xếp, click icon để đổi hình tùy chỉnh.
 
 API hỗ trợ:
-- `GET /api/deck` — danh sách app/lệnh (JSON)
+- `GET /api/deck` — danh sách app/lệnh và phím tắt (JSON)
+- `GET /send-hotkey` · `POST /send-hotkey` — gửi phím tắt app (xem [chi tiết](#getpost-send-hotkey--gửi-phím-tắt-app))
 - `GET /api/icons/{key}` — icon app (PNG)
 - `POST /api/upload` — upload file từ điện thoại (multipart, field `file`; tùy chọn `open=1` để mở file sau khi lưu)
 
@@ -280,6 +282,62 @@ curl -X POST https://192.168.1.x:8766/api/upload \
 ```
 
 Khi bật token, thêm header `Authorization: Bearer <token>`.
+
+### GET/POST /send-hotkey — Gửi phím tắt app
+
+Gọi phím tắt đã cấu hình trong Dashboard → **Apps & Commands** → **Phím** (vd. Save, Export, Copy). TrayLink sẽ focus app rồi gửi tổ hợp phím tương ứng (hoặc chỉ mở app nếu loại hành động là **Mở app**).
+
+| Tham số | Mô tả |
+|---------|--------|
+| `app` | App key (vd. `photoshop`, `chrome`) |
+| `hotkey` | ID phím tắt (vd. `save`, `export`) — xem trong modal **API** của từng app hoặc JSON `/api/deck` |
+
+**Lấy danh sách phím tắt:**
+
+```bash
+curl http://192.168.1.x:8765/api/deck
+```
+
+Mỗi app trong `items` có mảng `hotkeys` với `id`, `name`, `accelerator`, `action`.
+
+**GET** (cần bật *Cho phép GET* trong Settings):
+
+```bash
+# Gửi phím Save trong Photoshop
+http://192.168.1.x:8765/send-hotkey?app=photoshop&hotkey=save
+
+# Có token
+http://192.168.1.x:8765/send-hotkey?app=photoshop&hotkey=save&token=<token>
+```
+
+**POST:**
+
+```bash
+curl -X POST http://192.168.1.x:8765/send-hotkey \
+  -H "Content-Type: application/json" \
+  -d '{"app":"photoshop","hotkey":"save"}'
+```
+
+Khi bật token:
+
+```bash
+curl -X POST http://192.168.1.x:8765/send-hotkey \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"app":"photoshop","hotkey":"save"}'
+```
+
+**Response thành công:**
+
+```json
+{ "ok": true, "message": "executed hotkey 'Save' for app 'photoshop'" }
+```
+
+**Lưu ý:**
+
+- **macOS:** cần cấp quyền **Accessibility** cho TrayLink (Dashboard → Settings) để gửi phím vào app khác.
+- Phím tắt toàn cục (global shortcut) chỉ áp dụng cho hành động **Mở app** — gọi API `/send-hotkey` vẫn chạy mọi loại hành động đã cấu hình.
+- Dùng được từ Stream Deck, shortcut, script Python, ESP32, đồng hồ AI… miễn cùng LAN với PC.
 
 ### GET /open-app, /open-file, /exec (khi bật trong Settings)
 

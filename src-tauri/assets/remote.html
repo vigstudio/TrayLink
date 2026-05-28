@@ -526,6 +526,16 @@
       box-shadow: 0 0 0 2px var(--tile);
       pointer-events: none;
     }
+
+    .back-tile .tile-inner {
+      border-color: rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.12);
+    }
+
+    .back-tile:active .tile-inner,
+    .back-tile.pressed .tile-inner {
+      background: rgba(59, 130, 246, 0.22);
+    }
   </style>
 </head>
 <body>
@@ -1279,6 +1289,13 @@
       </svg>`;
     }
 
+    function backIcon() {
+      return `<svg class="fallback-icon hotkey-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 12H5"/>
+        <path d="M12 19l-7-7 7-7"/>
+      </svg>`;
+    }
+
     function hotkeyIconHtml(appKey, binding) {
       const icon = binding.icon;
       if (!icon) return keyboardIcon();
@@ -1294,7 +1311,7 @@
     }
 
     function updateBackButton() {
-      btnBack.classList.toggle("hidden", !selectedApp);
+      btnBack.classList.add("hidden");
     }
 
     function showAppGrid() {
@@ -1335,6 +1352,12 @@
           <h1><span class="status-dot"></span>${label}</h1>
         </div>
         <div class="grid">
+          <button class="tile hotkey-tile back-tile" data-action="back" aria-label="Trở về">
+            <div class="tile-inner">
+              ${backIcon()}
+            </div>
+            <span class="tile-label">Trở về</span>
+          </button>
           <button class="tile hotkey-tile" data-hotkey-action="open" aria-label="Mở ${label}">
             <div class="tile-inner">
               <img src="${src}" alt="" loading="eager" decoding="async" />
@@ -1350,6 +1373,16 @@
           const type = tile?.dataset.type || "app";
           img.outerHTML = type === "cmd" ? cmdIcon() : defaultIcon();
         });
+      });
+
+      appEl.querySelector("[data-action='back']")?.addEventListener("click", (e) => {
+        const tile = e.currentTarget;
+        tile.classList.add("pressed");
+        vibrate(30);
+        window.setTimeout(() => {
+          tile.classList.remove("pressed");
+          showAppGrid();
+        }, 120);
       });
 
       appEl.querySelector("[data-hotkey-action='open']")?.addEventListener("click", (e) => {
@@ -1394,7 +1427,6 @@
           tile.classList.add("success");
           setTimeout(() => tile.classList.remove("success"), 600);
         }
-        showToast(data.message || "Đã gửi phím tắt", "success");
       } catch (err) {
         vibrate([30, 50, 30]);
         if (tile) {
@@ -1410,7 +1442,9 @@
       const type = item.type || "app";
       if (type === "app") {
         trigger("app", item.key, item.url, tileEl);
-        showAppHotkeys(item);
+        if (item.hotkeys?.length > 0) {
+          showAppHotkeys(item);
+        }
         return;
       }
       trigger(type, item.key, item.url, tileEl);
@@ -1495,7 +1529,6 @@
           tile.classList.add("success");
           setTimeout(() => tile.classList.remove("success"), 600);
         }
-        showToast(data.message || "Đã gửi lệnh", "success");
       } catch (err) {
         vibrate([30, 50, 30]);
         if (tile) {

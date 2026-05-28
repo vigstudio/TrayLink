@@ -162,6 +162,9 @@ pub struct AppEntry {
     /// Cho phép mở app kèm URL (trình duyệt hoặc app hỗ trợ URL).
     #[serde(default)]
     pub url_enabled: bool,
+    /// Profile trình duyệt: `Default` / `Profile 1` (Chromium) hoặc `firefox:...`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub browser_profile: Option<String>,
     #[serde(default)]
     pub hotkeys: Vec<AppHotkeyBinding>,
     /// Migrate field cũ — một phím tắt duy nhất.
