@@ -12,4 +12,4 @@ pub fn resolve_launch_path(path: &str) -> PathBuf {
 }
 
 #[cfg(target_os = "windows")]
-pub use windows_lnk::{is_lnk, launch_windows_path, resolve_lnk_target};
+pub use windows_lnk::{is_lnk, launch_windows_path};

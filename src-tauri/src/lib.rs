@@ -382,7 +382,10 @@ fn test_hotkey_input(app: tauri::AppHandle) -> Result<String, String> {
     }
 
     #[cfg(not(target_os = "macos"))]
-    Ok("macOS only".to_string())
+    {
+        let _ = app;
+        Ok("macOS only".to_string())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

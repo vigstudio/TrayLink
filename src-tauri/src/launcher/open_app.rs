@@ -278,5 +278,6 @@ fn launch_windows_browser(
         .args(["/C", "start", "", "", &*path_str])
         .args(&launch_args)
         .spawn()
-        .map_err(|e| LauncherError::LaunchFailed(e.to_string()))
+        .map_err(|e| LauncherError::LaunchFailed(e.to_string()))?;
+    Ok(())
 }
